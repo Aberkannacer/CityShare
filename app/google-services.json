@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "366715596485",
+    "project_id": "cityshare-dc0b2",
+    "storage_bucket": "cityshare-dc0b2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:366715596485:android:3ff029f90c6998c96c0aac",
+        "android_client_info": {
+          "package_name": "be.student.cityshare"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBAxkS5zUOs3ssUZVNs_Cb143ti8vXsEaE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
