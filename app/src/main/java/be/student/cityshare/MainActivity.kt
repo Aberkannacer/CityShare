@@ -3,12 +3,12 @@ package be.student.cityshare
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 import be.student.cityshare.ui.auth.LoginScreen
+import be.student.cityshare.ui.auth.RegisterScreen
+import be.student.cityshare.ui.home.HomeScreen
 import be.student.cityshare.ui.theme.CityShareTheme
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
@@ -18,27 +18,47 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             CityShareTheme {
-                val user = Firebase.auth.currentUser
+                val nav = rememberNavController()
+                val startDest = if (Firebase.auth.currentUser != null) "home" else "login"
 
-                if (user != null) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(24.dp),
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Text(
-                            text = "Ingelogd als: ${user.email ?: "Onbekend"}",
-                            style = MaterialTheme.typography.headlineSmall
+                NavHost(navController = nav, startDestination = startDest) {
+
+                    composable("login") {
+                        LoginScreen(
+                            onLoggedIn = {
+                                nav.navigate("home") {
+                                    popUpTo("login") { inclusive = true }
+                                }
+                            },
+                            onGoToRegister = {
+                                nav.navigate("register")
+                            }
                         )
-                        Spacer(Modifier.height(16.dp))
-                        Button(onClick = { Firebase.auth.signOut() }) {
-                            Text("Sign out")
-                        }
                     }
-                } else {
-                    LoginScreen(onLoggedIn = {
-                    })
+
+                    composable("register") {
+                        RegisterScreen(
+                            onRegistered = {
+                                nav.navigate("home") {
+                                    // verwijder volledige auth-stack
+                                    popUpTo("login") { inclusive = true }
+                                }
+                            },
+                            onGoToLogin = {
+                                nav.popBackStack()
+                            }
+                        )
+                    }
+
+                    composable("home") {
+                        HomeScreen(
+                            onLogout = {
+                                nav.navigate("login") {
+                                    popUpTo("home") { inclusive = true }
+                                }
+                            }
+                        )
+                    }
                 }
             }
         }

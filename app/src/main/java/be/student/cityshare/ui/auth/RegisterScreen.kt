@@ -10,9 +10,9 @@ import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
 
 @Composable
-fun LoginScreen(
-    onLoggedIn: () -> Unit,
-    onGoToRegister: () -> Unit
+fun RegisterScreen(
+    onRegistered: () -> Unit,
+    onGoToLogin: () -> Unit
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -20,13 +20,13 @@ fun LoginScreen(
     var error by remember { mutableStateOf<String?>(null) }
 
     Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.Center) {
-        Text("Inloggen", style = MaterialTheme.typography.headlineSmall)
+        Text("Account aanmaken", style = MaterialTheme.typography.headlineSmall)
         Spacer(Modifier.height(16.dp))
 
         OutlinedTextField(email, { email = it }, label = { Text("Email") },
             singleLine = true, modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(8.dp))
-        OutlinedTextField(password, { password = it }, label = { Text("Password") },
+        OutlinedTextField(password, { password = it }, label = { Text("Password (min 6)") },
             singleLine = true, visualTransformation = PasswordVisualTransformation(),
             modifier = Modifier.fillMaxWidth())
 
@@ -43,14 +43,14 @@ fun LoginScreen(
                     error = "Geef geldige email en min. 6 tekens"; return@Button
                 }
                 loading = true; error = null
-                Firebase.auth.signInWithEmailAndPassword(email, password)
-                    .addOnSuccessListener { onLoggedIn() }
+                Firebase.auth.createUserWithEmailAndPassword(email, password)
+                    .addOnSuccessListener { onRegistered() }
                     .addOnFailureListener { error = it.message }
                     .addOnCompleteListener { loading = false }
             }
-        ) { Text("Login") }
+        ) { Text("Register") }
 
         Spacer(Modifier.height(8.dp))
-        TextButton(onClick = onGoToRegister) { Text("Nog geen account? Registreer") }
+        TextButton(onClick = onGoToLogin) { Text("Al een account? Inloggen") }
     }
 }
