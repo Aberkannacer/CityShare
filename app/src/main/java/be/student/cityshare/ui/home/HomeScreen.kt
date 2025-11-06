@@ -9,7 +9,7 @@ import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
 
 @Composable
-fun HomeScreen(onLogout: () -> Unit) {
+fun HomeScreen(onLogout: () -> Unit, onOpenCities: () -> Unit) {
     val user = Firebase.auth.currentUser
 
     Column(
@@ -24,6 +24,12 @@ fun HomeScreen(onLogout: () -> Unit) {
         )
 
         Spacer(Modifier.height(20.dp))
+
+        Button(onClick = onOpenCities) {
+            Text("Steden beheren")
+        }
+
+        Spacer(Modifier.height(12.dp))
 
         Button(onClick = {
             Firebase.auth.signOut()

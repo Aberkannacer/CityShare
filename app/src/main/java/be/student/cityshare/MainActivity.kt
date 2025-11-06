@@ -9,6 +9,8 @@ import androidx.navigation.compose.rememberNavController
 import be.student.cityshare.ui.auth.LoginScreen
 import be.student.cityshare.ui.auth.RegisterScreen
 import be.student.cityshare.ui.home.HomeScreen
+import be.student.cityshare.ui.cities.AddCityScreen
+import be.student.cityshare.ui.cities.CitiesScreen
 import be.student.cityshare.ui.theme.CityShareTheme
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
@@ -56,7 +58,25 @@ class MainActivity : ComponentActivity() {
                                 nav.navigate("login") {
                                     popUpTo("home") { inclusive = true }
                                 }
-                            }
+                            },
+                            onOpenCities = { nav.navigate("cities") }
+                        )
+                    }
+
+                    composable("cities") {
+                        CitiesScreen(
+                            onAddCity = { nav.navigate("cities/add") },
+                            onBack = { nav.popBackStack() }
+                        )
+                    }
+
+                    composable("cities/add") {
+                        AddCityScreen(
+                            onSaved = {
+                                // on save, go back to list
+                                nav.popBackStack()
+                            },
+                            onCancel = { nav.popBackStack() }
                         )
                     }
                 }
