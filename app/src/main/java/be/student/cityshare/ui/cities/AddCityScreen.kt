@@ -6,8 +6,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.google.firebase.auth.ktx.auth
-import com.google.firebase.ktx.Firebase
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.ktx.Firebase
 
 @Composable
 fun AddCityScreen(
@@ -76,11 +76,15 @@ fun AddCityScreen(
                         "createdBy" to userId,
                         "createdAt" to com.google.firebase.Timestamp.now()
                     )
+
+                    // Start de opslagactie...
                     FirebaseFirestore.getInstance().collection("cities")
                         .add(data)
-                        .addOnSuccessListener { onSaved() }
                         .addOnFailureListener { error = it.message ?: "Opslaan mislukt" }
                         .addOnCompleteListener { loading = false }
+
+                    // ...en navigeer ONMIDDELLIJK terug.
+                    onSaved()
                 }
             ) { Text("Opslaan") }
         }

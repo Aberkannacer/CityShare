@@ -72,10 +72,7 @@ class MainActivity : ComponentActivity() {
 
                     composable("cities/add") {
                         AddCityScreen(
-                            onSaved = {
-                                // on save, go back to list
-                                nav.popBackStack()
-                            },
+                            onSaved = { nav.popBackStack() },
                             onCancel = { nav.popBackStack() }
                         )
                     }
