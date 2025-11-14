@@ -11,13 +11,19 @@ import be.student.cityshare.ui.auth.RegisterScreen
 import be.student.cityshare.ui.home.HomeScreen
 import be.student.cityshare.ui.cities.AddCityScreen
 import be.student.cityshare.ui.cities.CitiesScreen
+import be.student.cityshare.ui.map.WorldMapScreen
 import be.student.cityshare.ui.theme.CityShareTheme
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
+import org.maplibre.android.MapLibre
+import be.student.cityshare.ui.map.WorldMapScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        MapLibre.getInstance(this)
+
         setContent {
             CityShareTheme {
                 val nav = rememberNavController()
@@ -42,7 +48,6 @@ class MainActivity : ComponentActivity() {
                         RegisterScreen(
                             onRegistered = {
                                 nav.navigate("home") {
-                                    // verwijder volledige auth-stack
                                     popUpTo("login") { inclusive = true }
                                 }
                             },
@@ -59,7 +64,8 @@ class MainActivity : ComponentActivity() {
                                     popUpTo("home") { inclusive = true }
                                 }
                             },
-                            onOpenCities = { nav.navigate("cities") }
+                            onOpenCities = { nav.navigate("cities") },
+                            onOpenMap = { nav.navigate("map") }
                         )
                     }
 
@@ -75,6 +81,10 @@ class MainActivity : ComponentActivity() {
                             onSaved = { nav.popBackStack() },
                             onCancel = { nav.popBackStack() }
                         )
+                    }
+
+                    composable("map") {
+                        WorldMapScreen()
                     }
                 }
             }

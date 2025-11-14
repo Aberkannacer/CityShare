@@ -9,7 +9,11 @@ import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
 
 @Composable
-fun HomeScreen(onLogout: () -> Unit, onOpenCities: () -> Unit) {
+fun HomeScreen(
+    onLogout: () -> Unit,
+    onOpenCities: () -> Unit,
+    onOpenMap: () -> Unit
+) {
     val user = Firebase.auth.currentUser
 
     Column(
@@ -19,7 +23,7 @@ fun HomeScreen(onLogout: () -> Unit, onOpenCities: () -> Unit) {
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = "Welkom ${user?.email ?: "gebruiker"} 👋",
+            text = "Welkom ${user?.email ?: "gebruiker"}",
             style = MaterialTheme.typography.headlineMedium
         )
 
@@ -27,6 +31,12 @@ fun HomeScreen(onLogout: () -> Unit, onOpenCities: () -> Unit) {
 
         Button(onClick = onOpenCities) {
             Text("Steden beheren")
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        Button(onClick = onOpenMap) {
+            Text("Open kaart")
         }
 
         Spacer(Modifier.height(12.dp))
