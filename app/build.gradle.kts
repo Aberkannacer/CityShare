@@ -61,5 +61,6 @@ dependencies {
     implementation(libs.firebase.auth)
     implementation(libs.firebase.firestore)
     implementation("androidx.navigation:navigation-compose:2.8.4")
-    implementation("org.maplibre.gl:android-sdk:11.4.0")
+    implementation("org.maplibre.gl:android-sdk:11.1.0")
+    implementation("com.google.android.gms:play-services-location:21.3.0")
 }

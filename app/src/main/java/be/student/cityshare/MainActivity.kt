@@ -1,28 +1,43 @@
 package be.student.cityshare
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import be.student.cityshare.ui.auth.LoginScreen
 import be.student.cityshare.ui.auth.RegisterScreen
-import be.student.cityshare.ui.home.HomeScreen
 import be.student.cityshare.ui.cities.AddCityScreen
 import be.student.cityshare.ui.cities.CitiesScreen
+import be.student.cityshare.ui.home.HomeScreen
 import be.student.cityshare.ui.map.WorldMapScreen
 import be.student.cityshare.ui.theme.CityShareTheme
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
 import org.maplibre.android.MapLibre
-import be.student.cityshare.ui.map.WorldMapScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         MapLibre.getInstance(this)
+
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+                100
+            )
+        }
 
         setContent {
             CityShareTheme {
@@ -38,9 +53,7 @@ class MainActivity : ComponentActivity() {
                                     popUpTo("login") { inclusive = true }
                                 }
                             },
-                            onGoToRegister = {
-                                nav.navigate("register")
-                            }
+                            onGoToRegister = { nav.navigate("register") }
                         )
                     }
 
@@ -51,9 +64,7 @@ class MainActivity : ComponentActivity() {
                                     popUpTo("login") { inclusive = true }
                                 }
                             },
-                            onGoToLogin = {
-                                nav.popBackStack()
-                            }
+                            onGoToLogin = { nav.popBackStack() }
                         )
                     }
 
