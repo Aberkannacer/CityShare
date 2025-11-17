@@ -112,6 +112,7 @@ fun AddPlaceScreen(
             Button(
                 onClick = {
                     placesViewModel.savePlace(
+                        context = context,
                         title = title,
                         lat = lat,
                         lng = lng,
