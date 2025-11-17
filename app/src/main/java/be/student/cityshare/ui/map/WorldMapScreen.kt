@@ -8,14 +8,21 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import be.student.cityshare.model.SavedPlace
 import be.student.cityshare.ui.places.PlacesViewModel
@@ -40,6 +47,8 @@ fun WorldMapScreen(
 
     var map by remember { mutableStateOf<MapLibreMap?>(null) }
 
+    val markerPlaceMap = remember { mutableStateMapOf<Long, String>() }
+
     DisposableEffect(Unit) {
         mapView.onStart()
         mapView.onResume()
@@ -51,9 +60,8 @@ fun WorldMapScreen(
         }
     }
 
-    // markers updaten als places of map verandert
     LaunchedEffect(map, places) {
-        updateMarkers(map, places)
+        updateMarkers(map, places, markerPlaceMap)
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -97,6 +105,14 @@ fun WorldMapScreen(
                         navController.navigate("add_place/$lat/$lng")
                         true
                     }
+
+                    mapLibreMap.setOnInfoWindowClickListener { marker ->
+                        val placeId = markerPlaceMap[marker.id]
+                        if (placeId != null) {
+                            navController.navigate("place_detail/$placeId")
+                        }
+                        true
+                    }
                 }
             }
         }
@@ -104,6 +120,7 @@ fun WorldMapScreen(
         val MIN_ZOOM = 1.0
         val MAX_ZOOM = 18.0
 
+        // zoom knoppen
         Column(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
@@ -144,16 +161,21 @@ fun WorldMapScreen(
 
 private fun updateMarkers(
     map: MapLibreMap?,
-    places: List<SavedPlace>
+    places: List<SavedPlace>,
+    markerPlaceMap: MutableMap<Long, String>
 ) {
     if (map == null) return
+
     map.clear()
+    markerPlaceMap.clear()
+
     places.forEach { place ->
-        map.addMarker(
+        val marker = map.addMarker(
             MarkerOptions()
                 .position(LatLng(place.latitude, place.longitude))
                 .title(place.title)
                 .snippet(place.category)
         )
+        markerPlaceMap[marker.id] = place.id
     }
 }

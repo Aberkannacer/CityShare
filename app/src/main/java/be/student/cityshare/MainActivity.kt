@@ -20,6 +20,7 @@ import be.student.cityshare.ui.cities.CitiesScreen
 import be.student.cityshare.ui.home.HomeScreen
 import be.student.cityshare.ui.map.WorldMapScreen
 import be.student.cityshare.ui.places.AddPlaceScreen
+import be.student.cityshare.ui.places.PlaceDetailScreen
 import be.student.cityshare.ui.places.PlacesViewModel
 import be.student.cityshare.ui.theme.CityShareTheme
 import com.google.firebase.auth.ktx.auth
@@ -50,7 +51,6 @@ class MainActivity : ComponentActivity() {
                 val nav = rememberNavController()
                 val startDest = if (Firebase.auth.currentUser != null) "home" else "login"
 
-                // gedeelde PlacesViewModel voor alle schermen
                 val placesViewModel: PlacesViewModel = viewModel()
 
                 NavHost(
@@ -132,6 +132,21 @@ class MainActivity : ComponentActivity() {
                             lng = lng,
                             onSaved = { nav.popBackStack() },
                             onCancel = { nav.popBackStack() },
+                            placesViewModel = placesViewModel
+                        )
+                    }
+
+                    composable(
+                        route = "place_detail/{placeId}",
+                        arguments = listOf(
+                            navArgument("placeId") { type = NavType.StringType }
+                        )
+                    ) { backStackEntry ->
+                        val placeId = backStackEntry.arguments?.getString("placeId") ?: ""
+
+                        PlaceDetailScreen(
+                            placeId = placeId,
+                            onBack = { nav.popBackStack() },
                             placesViewModel = placesViewModel
                         )
                     }

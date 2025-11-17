@@ -10,6 +10,7 @@ import androidx.navigation.navArgument
 import be.student.cityshare.ui.home.HomeScreen
 import be.student.cityshare.ui.map.WorldMapScreen
 import be.student.cityshare.ui.places.AddPlaceScreen
+import be.student.cityshare.ui.places.PlaceDetailScreen
 import be.student.cityshare.ui.places.PlacesViewModel
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
@@ -17,7 +18,6 @@ import com.google.firebase.ktx.Firebase
 @Composable
 fun CityShareApp() {
     val navController = rememberNavController()
-
     val placesViewModel: PlacesViewModel = viewModel()
 
     NavHost(
@@ -30,6 +30,7 @@ fun CityShareApp() {
                     Firebase.auth.signOut()
                 },
                 onOpenCities = {
+                    // TODO: route naar je steden scherm
                 },
                 onOpenMap = {
                     navController.navigate("map")
@@ -51,18 +52,29 @@ fun CityShareApp() {
                 navArgument("lng") { type = NavType.StringType }
             )
         ) { backStackEntry ->
-            val lat = backStackEntry.arguments
-                ?.getString("lat")
-                ?.toDoubleOrNull() ?: 0.0
-            val lng = backStackEntry.arguments
-                ?.getString("lng")
-                ?.toDoubleOrNull() ?: 0.0
+            val lat = backStackEntry.arguments?.getString("lat")?.toDoubleOrNull() ?: 0.0
+            val lng = backStackEntry.arguments?.getString("lng")?.toDoubleOrNull() ?: 0.0
 
             AddPlaceScreen(
                 lat = lat,
                 lng = lng,
                 onSaved = { navController.popBackStack() },
                 onCancel = { navController.popBackStack() },
+                placesViewModel = placesViewModel
+            )
+        }
+
+        composable(
+            route = "place_detail/{placeId}",
+            arguments = listOf(
+                navArgument("placeId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val placeId = backStackEntry.arguments?.getString("placeId") ?: ""
+
+            PlaceDetailScreen(
+                placeId = placeId,
+                onBack = { navController.popBackStack() },
                 placesViewModel = placesViewModel
             )
         }
