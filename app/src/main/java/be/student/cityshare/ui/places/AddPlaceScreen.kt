@@ -10,10 +10,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.*
@@ -52,85 +54,99 @@ fun AddPlaceScreen(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
-            .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text(text = "Nieuwe locatie opslaan")
-        Text(text = "Lat: $lat")
-        Text(text = "Lng: $lng")
-
-        TextField(
-            value = title,
-            onValueChange = { title = it },
-            label = { Text("Titel of beschrijving") },
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Text(text = "Categorie")
-
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            val categories = listOf("Eten", "Winkel", "Bezienswaardigheid", "Werk", "Anders")
-            categories.forEach { cat ->
-                Text(
-                    text = cat,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(
-                            if (category == cat) Color.LightGray else Color.Transparent
-                        )
-                        .clickable { category = cat }
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                )
+        // Top bar sectie (niet-scrollbaar)
+        Box(modifier = Modifier.fillMaxWidth()) {
+            IconButton(onClick = onCancel, modifier = Modifier.align(Alignment.CenterStart)) {
+                Icon(Icons.Default.ArrowBack, contentDescription = "Terug")
             }
+            Text("Nieuwe locatie opslaan", modifier = Modifier.align(Alignment.Center))
         }
 
-        Text(text = "Beoordeling")
-        Row {
-            (1..5).forEach { starIndex ->
-                Icon(
-                    imageVector = if (starIndex <= rating) Icons.Default.Star else Icons.Default.StarBorder,
-                    contentDescription = "Star $starIndex",
-                    modifier = Modifier.clickable { rating = starIndex },
-                    tint = if (starIndex <= rating) Color(0xFFFFC107) else Color.Gray
-                )
-            }
-        }
+        Spacer(modifier = Modifier.height(16.dp))
 
-        TextField(
-            value = comment,
-            onValueChange = { comment = it },
-            label = { Text("Commentaar (optioneel)") },
-            modifier = Modifier.fillMaxWidth(),
-            minLines = 3
-        )
-
-
-        Button(
-            onClick = { pickImageLauncher.launch("image/*") }
+        // Scrollbare content
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text(text = "Kies foto")
-        }
+            Text(text = "Lat: $lat")
+            Text(text = "Lng: $lng")
 
-        imageUri?.let { uri ->
-            AsyncImage(
-                model = ImageRequest.Builder(context)
-                    .data(uri)
-                    .build(),
-                contentDescription = "Gekozen foto",
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(200.dp)
+            TextField(
+                value = title,
+                onValueChange = { title = it },
+                label = { Text("Titel of beschrijving") },
+                modifier = Modifier.fillMaxWidth()
             )
+
+            Text(text = "Categorie")
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                val categories = listOf("Eten", "Winkel", "Bezienswaardigheid", "Werk", "Anders")
+                categories.forEach { cat ->
+                    Text(
+                        text = cat,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(
+                                if (category == cat) Color.LightGray else Color.Transparent
+                            )
+                            .clickable { category = cat }
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+            }
+
+            Text(text = "Beoordeling")
+            Row {
+                (1..5).forEach { starIndex ->
+                    Icon(
+                        imageVector = if (starIndex <= rating) Icons.Default.Star else Icons.Default.StarBorder,
+                        contentDescription = "Star $starIndex",
+                        modifier = Modifier.clickable { rating = starIndex },
+                        tint = if (starIndex <= rating) Color(0xFFFFC107) else Color.Gray
+                    )
+                }
+            }
+
+            TextField(
+                value = comment,
+                onValueChange = { comment = it },
+                label = { Text("Commentaar (optioneel)") },
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 3
+            )
+
+
+            Button(
+                onClick = { pickImageLauncher.launch("image/*") }
+            ) {
+                Text(text = "Kies foto")
+            }
+
+            imageUri?.let { uri ->
+                AsyncImage(
+                    model = ImageRequest.Builder(context)
+                        .data(uri)
+                        .build(),
+                    contentDescription = "Gekozen foto",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp)
+                )
+            }
         }
 
-        Spacer(modifier = Modifier.weight(1f))
-
+        // Knoppen onderaan (niet-scrollbaar)
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Button(
