@@ -6,8 +6,14 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.*
@@ -31,6 +37,8 @@ fun AddPlaceScreen(
     var title by remember { mutableStateOf("") }
     var category by remember { mutableStateOf("Anders") }
     var imageUri by remember { mutableStateOf<Uri?>(null) }
+    var rating by remember { mutableStateOf(0) }
+    var comment by remember { mutableStateOf("") }
 
     val context = LocalContext.current
 
@@ -43,7 +51,8 @@ fun AddPlaceScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
+            .padding(16.dp)
+            .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(text = "Nieuwe locatie opslaan")
@@ -77,6 +86,27 @@ fun AddPlaceScreen(
                 )
             }
         }
+
+        Text(text = "Beoordeling")
+        Row {
+            (1..5).forEach { starIndex ->
+                Icon(
+                    imageVector = if (starIndex <= rating) Icons.Default.Star else Icons.Default.StarBorder,
+                    contentDescription = "Star $starIndex",
+                    modifier = Modifier.clickable { rating = starIndex },
+                    tint = if (starIndex <= rating) Color(0xFFFFC107) else Color.Gray
+                )
+            }
+        }
+
+        TextField(
+            value = comment,
+            onValueChange = { comment = it },
+            label = { Text("Commentaar (optioneel)") },
+            modifier = Modifier.fillMaxWidth(),
+            minLines = 3
+        )
+
 
         Button(
             onClick = { pickImageLauncher.launch("image/*") }
@@ -117,11 +147,13 @@ fun AddPlaceScreen(
                         lat = lat,
                         lng = lng,
                         category = category,
-                        imageUri = imageUri
+                        imageUri = imageUri,
+                        rating = rating,
+                        comment = comment
                     )
                     onSaved()
                 },
-                enabled = title.isNotBlank() && imageUri != null,
+                enabled = title.isNotBlank(),
                 modifier = Modifier.weight(1f)
             ) {
                 Text(text = "Opslaan")

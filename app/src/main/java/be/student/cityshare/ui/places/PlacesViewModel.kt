@@ -74,7 +74,9 @@ class PlacesViewModel : ViewModel() {
         lat: Double,
         lng: Double,
         category: String,
-        imageUri: Uri?
+        imageUri: Uri?,
+        rating: Int,
+        comment: String
     ) {
         val userId = auth.currentUser?.uid ?: return
 
@@ -90,7 +92,9 @@ class PlacesViewModel : ViewModel() {
                 latitude = lat,
                 longitude = lng,
                 category = category,
-                imageUrl = localPath
+                imageUrl = localPath,
+                rating = rating,
+                comment = comment
             )
 
             db.collection("places")
