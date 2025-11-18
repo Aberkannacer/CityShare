@@ -11,7 +11,9 @@ import be.student.cityshare.ui.home.HomeScreen
 import be.student.cityshare.ui.map.WorldMapScreen
 import be.student.cityshare.ui.places.AddPlaceScreen
 import be.student.cityshare.ui.places.PlaceDetailScreen
+import be.student.cityshare.ui.places.PlacesListScreen
 import be.student.cityshare.ui.places.PlacesViewModel
+import be.student.cityshare.ui.profile.ProfileScreen
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
 
@@ -26,14 +28,33 @@ fun CityShareApp() {
     ) {
         composable("home") {
             HomeScreen(
+                onNavigateToMap = { navController.navigate("map") },
+                onNavigateToPlaces = { navController.navigate("places") },
+                onNavigateToProfile = { navController.navigate("profile") }
+            )
+        }
+
+        composable("profile") {
+            ProfileScreen(
+                onBack = { navController.popBackStack() },
                 onLogout = {
                     Firebase.auth.signOut()
-                },
-                onOpenCities = {
-                    // TODO: route naar je steden scherm
-                },
-                onOpenMap = {
-                    navController.navigate("map")
+                    // Keer terug naar het startpunt en wis de backstack
+                    navController.navigate("home") {
+                        popUpTo(navController.graph.startDestinationId) {
+                            inclusive = true
+                        }
+                    }
+                }
+            )
+        }
+
+        composable("places") {
+            PlacesListScreen(
+                placesViewModel = placesViewModel,
+                onBack = { navController.popBackStack() },
+                onPlaceClick = { place ->
+                    navController.navigate("place_detail/${place.id}")
                 }
             )
         }
@@ -70,13 +91,15 @@ fun CityShareApp() {
                 navArgument("placeId") { type = NavType.StringType }
             )
         ) { backStackEntry ->
-            val placeId = backStackEntry.arguments?.getString("placeId") ?: ""
+            val placeId = backStackEntry.arguments?.getString("placeId")
 
-            PlaceDetailScreen(
-                placeId = placeId,
-                onBack = { navController.popBackStack() },
-                placesViewModel = placesViewModel
-            )
+            if (placeId != null) {
+                PlaceDetailScreen(
+                    placeId = placeId,
+                    onBack = { navController.popBackStack() },
+                    placesViewModel = placesViewModel
+                )
+            }
         }
     }
 }

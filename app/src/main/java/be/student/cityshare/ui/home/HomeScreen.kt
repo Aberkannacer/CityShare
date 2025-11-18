@@ -1,51 +1,99 @@
 package be.student.cityshare.ui.home
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.google.firebase.auth.ktx.auth
-import com.google.firebase.ktx.Firebase
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    onLogout: () -> Unit,
-    onOpenCities: () -> Unit,
-    onOpenMap: () -> Unit
+    onNavigateToMap: () -> Unit,
+    onNavigateToPlaces: () -> Unit,
+    onNavigateToProfile: () -> Unit,
 ) {
-    val user = Firebase.auth.currentUser
+    Scaffold(
+        topBar = {
+            CenterAlignedTopAppBar(title = { Text("CityShare") })
+        }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            HomeCard(
+                title = "Wereldkaart",
+                icon = Icons.Default.Map,
+                onClick = onNavigateToMap
+            )
+            HomeCard(
+                title = "Mijn Plaatsen",
+                icon = Icons.AutoMirrored.Filled.List,
+                onClick = onNavigateToPlaces
+            )
+            HomeCard(
+                title = "Profiel",
+                icon = Icons.Default.Person,
+                onClick = onNavigateToProfile
+            )
+        }
+    }
+}
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        verticalArrangement = Arrangement.Center
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun HomeCard(
+    title: String,
+    icon: ImageVector,
+    onClick: () -> Unit
+) {
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(4.dp)
     ) {
-        Text(
-            text = "Welkom ${user?.email ?: "gebruiker"}",
-            style = MaterialTheme.typography.headlineMedium
-        )
-
-        Spacer(Modifier.height(20.dp))
-
-        Button(onClick = onOpenCities) {
-            Text("Steden beheren")
-        }
-
-        Spacer(Modifier.height(12.dp))
-
-        Button(onClick = onOpenMap) {
-            Text("Open kaart")
-        }
-
-        Spacer(Modifier.height(12.dp))
-
-        Button(onClick = {
-            Firebase.auth.signOut()
-            onLogout()
-        }) {
-            Text("Uitloggen")
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(icon, contentDescription = title, modifier = Modifier.size(48.dp))
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.headlineMedium,
+                    textAlign = TextAlign.Center
+                )
+            }
         }
     }
 }

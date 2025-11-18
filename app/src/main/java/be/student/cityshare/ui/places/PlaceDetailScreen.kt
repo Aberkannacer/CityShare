@@ -1,69 +1,105 @@
 package be.student.cityshare.ui.places
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.Button
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
+import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
-import coil.request.ImageRequest
-import be.student.cityshare.model.SavedPlace
-import java.io.File
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlaceDetailScreen(
     placeId: String,
-    onBack: () -> Unit,
-    placesViewModel: PlacesViewModel
+    placesViewModel: PlacesViewModel,
+    onBack: () -> Unit
 ) {
     val places by placesViewModel.places.collectAsState()
-    val place = places.firstOrNull { it.id == placeId }
+    val place = places.find { it.id == placeId }
 
-    val context = LocalContext.current
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        horizontalAlignment = Alignment.Start
-    ) {
-        Button(onClick = onBack) {
-            Text("Terug")
-        }
-
-        if (place == null) {
-            Spacer(Modifier.height(16.dp))
-            Text("Locatie niet gevonden.")
-            return@Column
-        }
-
-        Spacer(Modifier.height(8.dp))
-
-        Text(text = place.title)
-        Text(text = "Categorie: ${place.category}")
-        Text(text = "Lat: ${place.latitude}")
-        Text(text = "Lng: ${place.longitude}")
-
-        Spacer(Modifier.height(16.dp))
-
-        if (place.imageUrl.isNotBlank()) {
-            AsyncImage(
-                model = ImageRequest.Builder(context)
-                    .data(File(place.imageUrl))
-                    .build(),
-                contentDescription = "Foto van locatie",
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(250.dp)
+    Scaffold(
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = { Text(place?.title ?: "Detail") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Terug")
+                    }
+                }
             )
+        }
+    ) { padding ->
+        if (place != null) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(16.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                if (place.imageUrl.isNotBlank()) {
+                    AsyncImage(
+                        model = place.imageUrl,
+                        contentDescription = place.title,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(250.dp),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+
+                Text(text = place.category, style = MaterialTheme.typography.labelLarge)
+
+                // Sterrenbeoordeling
+                if (place.rating > 0) {
+                    Row {
+                        (1..5).forEach { starIndex ->
+                            Icon(
+                                imageVector = if (starIndex <= place.rating) Icons.Default.Star else Icons.Default.StarBorder,
+                                contentDescription = "Rating",
+                                tint = if (starIndex <= place.rating) Color(0xFFFFC107) else Color.Gray
+                            )
+                        }
+                    }
+                }
+
+                // Commentaar
+                if (place.comment.isNotBlank()) {
+                    Text(
+                        text = place.comment,
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+            }
         } else {
-            Text("Geen foto beschikbaar.")
+            // Optioneel: Toon een laadindicator of een foutmelding
+            Text("Laden...", modifier = Modifier.padding(padding))
         }
     }
 }
