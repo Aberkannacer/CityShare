@@ -4,15 +4,15 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import org.osmdroid.config.Configuration
+import android.preference.PreferenceManager
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import be.student.cityshare.ui.auth.LoginScreen
 import be.student.cityshare.ui.auth.RegisterScreen
 import be.student.cityshare.ui.home.HomeScreen
-import be.student.cityshare.ui.map.WorldMapScreen
+import be.student.cityshare.ui.map.OsmdroidWorldMapScreen
 import be.student.cityshare.ui.places.AddPlaceScreen
 import be.student.cityshare.ui.places.PlaceDetailScreen
 import be.student.cityshare.ui.places.PlacesListScreen
@@ -27,6 +27,18 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val ctx = applicationContext
+        Configuration.getInstance().load(
+            ctx,
+            PreferenceManager.getDefaultSharedPreferences(ctx)
+        )
+        Configuration.getInstance().userAgentValue = ctx.packageName
+
+        setContent {
+            CityShareTheme {
+                CityShareApp()
+            }
+        }
         setContent {
             CityShareTheme {
                 val navController = rememberNavController()
@@ -77,7 +89,7 @@ class MainActivity : ComponentActivity() {
                     }
 
                     composable("map") {
-                        WorldMapScreen(navController, placesViewModel)
+                        OsmdroidWorldMapScreen(navController, placesViewModel)
                     }
 
                     composable("places") {

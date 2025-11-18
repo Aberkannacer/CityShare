@@ -53,7 +53,7 @@ import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
 
 @Composable
-fun WorldMapScreen(
+fun MapLibreWorldMapScreen(
     navController: NavController,
     placesViewModel: PlacesViewModel
 ) {

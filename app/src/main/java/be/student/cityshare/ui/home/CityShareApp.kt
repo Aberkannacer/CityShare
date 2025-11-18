@@ -8,7 +8,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import be.student.cityshare.ui.home.HomeScreen
-import be.student.cityshare.ui.map.WorldMapScreen
+import be.student.cityshare.ui.map.OsmdroidWorldMapScreen
 import be.student.cityshare.ui.places.AddPlaceScreen
 import be.student.cityshare.ui.places.PlaceDetailScreen
 import be.student.cityshare.ui.places.PlacesListScreen
@@ -60,7 +60,7 @@ fun CityShareApp() {
         }
 
         composable("map") {
-            WorldMapScreen(
+            OsmdroidWorldMapScreen(
                 navController = navController,
                 placesViewModel = placesViewModel
             )
