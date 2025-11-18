@@ -25,9 +25,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun AddPlaceScreen(
     lat: Double,
@@ -37,7 +40,23 @@ fun AddPlaceScreen(
     placesViewModel: PlacesViewModel
 ) {
     var title by remember { mutableStateOf("") }
-    var category by remember { mutableStateOf("Anders") }
+
+    val categories = listOf(
+        "Eten & Drinken",
+        "Koffiebar",
+        "Winkel",
+        "Supermarkt",
+        "Bezienswaardigheid",
+        "Natuur / Park",
+        "Sport & Fitness",
+        "Werk / School",
+        "Openbaar Vervoer",
+        "Vrije Tijd",
+        "Diensten",
+        "Overig"
+    )
+    var category by remember { mutableStateOf(categories.first()) }
+
     var imageUri by remember { mutableStateOf<Uri?>(null) }
     var rating by remember { mutableStateOf(0) }
     var comment by remember { mutableStateOf("") }
@@ -46,26 +65,29 @@ fun AddPlaceScreen(
 
     val pickImageLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
-    ) { uri ->
-        imageUri = uri
-    }
+    ) { uri -> imageUri = uri }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        // Top bar sectie (niet-scrollbaar)
+
         Box(modifier = Modifier.fillMaxWidth()) {
-            IconButton(onClick = onCancel, modifier = Modifier.align(Alignment.CenterStart)) {
+            IconButton(
+                onClick = onCancel,
+                modifier = Modifier.align(Alignment.CenterStart)
+            ) {
                 Icon(Icons.Default.ArrowBack, contentDescription = "Terug")
             }
-            Text("Nieuwe locatie opslaan", modifier = Modifier.align(Alignment.Center))
+            Text(
+                text = "Nieuwe locatie opslaan",
+                modifier = Modifier.align(Alignment.Center)
+            )
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Scrollbare content
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -84,21 +106,21 @@ fun AddPlaceScreen(
 
             Text(text = "Categorie")
 
-            Row(
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth()
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                val categories = listOf("Eten", "Winkel", "Bezienswaardigheid", "Werk", "Anders")
                 categories.forEach { cat ->
                     Text(
                         text = cat,
                         modifier = Modifier
                             .clip(RoundedCornerShape(16.dp))
                             .background(
-                                if (category == cat) Color.LightGray else Color.Transparent
+                                if (category == cat) Color(0xFFD0D0D0) else Color.Transparent
                             )
                             .clickable { category = cat }
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
                     )
                 }
             }
@@ -109,7 +131,9 @@ fun AddPlaceScreen(
                     Icon(
                         imageVector = if (starIndex <= rating) Icons.Default.Star else Icons.Default.StarBorder,
                         contentDescription = "Star $starIndex",
-                        modifier = Modifier.clickable { rating = starIndex },
+                        modifier = Modifier
+                            .padding(end = 4.dp)
+                            .clickable { rating = starIndex },
                         tint = if (starIndex <= rating) Color(0xFFFFC107) else Color.Gray
                     )
                 }
@@ -123,10 +147,7 @@ fun AddPlaceScreen(
                 minLines = 3
             )
 
-
-            Button(
-                onClick = { pickImageLauncher.launch("image/*") }
-            ) {
+            Button(onClick = { pickImageLauncher.launch("image/*") }) {
                 Text(text = "Kies foto")
             }
 
@@ -143,11 +164,12 @@ fun AddPlaceScreen(
             }
         }
 
-        // Knoppen onderaan (niet-scrollbaar)
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 16.dp)
         ) {
             Button(
                 onClick = onCancel,
