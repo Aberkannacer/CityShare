@@ -7,6 +7,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import be.student.cityshare.ui.cities.AddCityScreen
+import be.student.cityshare.ui.cities.CitiesScreen
 import be.student.cityshare.ui.home.HomeScreen
 import be.student.cityshare.ui.map.OsmdroidWorldMapScreen
 import be.student.cityshare.ui.places.AddPlaceScreen
@@ -22,6 +24,7 @@ fun CityShareApp() {
     val navController = rememberNavController()
     val placesViewModel: PlacesViewModel = viewModel()
 
+    // Als je login wilt, kan je hier ook "login" als startDestination zetten.
     NavHost(
         navController = navController,
         startDestination = "home"
@@ -30,6 +33,7 @@ fun CityShareApp() {
             HomeScreen(
                 onNavigateToMap = { navController.navigate("map") },
                 onNavigateToPlaces = { navController.navigate("places") },
+                onNavigateToCities = { navController.navigate("cities") },
                 onNavigateToProfile = { navController.navigate("profile") }
             )
         }
@@ -39,7 +43,6 @@ fun CityShareApp() {
                 onBack = { navController.popBackStack() },
                 onLogout = {
                     Firebase.auth.signOut()
-                    // Keer terug naar het startpunt en wis de backstack
                     navController.navigate("home") {
                         popUpTo(navController.graph.startDestinationId) {
                             inclusive = true
@@ -100,6 +103,20 @@ fun CityShareApp() {
                     placesViewModel = placesViewModel
                 )
             }
+        }
+
+        composable("cities") {
+            CitiesScreen(
+                onAddCity = { navController.navigate("add_city") },
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable("add_city") {
+            AddCityScreen(
+                onSaved = { navController.popBackStack() },
+                onCancel = { navController.popBackStack() }
+            )
         }
     }
 }

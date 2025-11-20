@@ -8,6 +8,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.google.firebase.firestore.Query
@@ -65,11 +66,20 @@ fun CitiesScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = onAddCity) {
-                Icon(Icons.Default.Add, contentDescription = "Toevoegen")
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 16.dp, bottom = 16.dp),
+                contentAlignment = Alignment.BottomStart
+            ) {
+                FloatingActionButton(onClick = onAddCity) {
+                    Icon(Icons.Default.Add, contentDescription = "Toevoegen")
+                }
             }
-        }
-    ) { padding ->
+        },
+        floatingActionButtonPosition = FabPosition.Start
+    )
+    { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()

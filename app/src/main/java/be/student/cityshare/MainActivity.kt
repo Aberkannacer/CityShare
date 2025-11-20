@@ -4,13 +4,14 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
-import org.osmdroid.config.Configuration
 import android.preference.PreferenceManager
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import be.student.cityshare.ui.auth.LoginScreen
 import be.student.cityshare.ui.auth.RegisterScreen
+import be.student.cityshare.ui.cities.AddCityScreen
+import be.student.cityshare.ui.cities.CitiesScreen
 import be.student.cityshare.ui.home.HomeScreen
 import be.student.cityshare.ui.map.OsmdroidWorldMapScreen
 import be.student.cityshare.ui.places.AddPlaceScreen
@@ -21,12 +22,15 @@ import be.student.cityshare.ui.profile.ProfileScreen
 import be.student.cityshare.ui.theme.CityShareTheme
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
+import org.osmdroid.config.Configuration
 
 class MainActivity : ComponentActivity() {
     private val placesViewModel: PlacesViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // osmdroid config
         val ctx = applicationContext
         Configuration.getInstance().load(
             ctx,
@@ -36,16 +40,13 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             CityShareTheme {
-                CityShareApp()
-            }
-        }
-        setContent {
-            CityShareTheme {
                 val navController = rememberNavController()
                 val startDest = if (Firebase.auth.currentUser != null) "home" else "login"
 
-                NavHost(navController = navController, startDestination = startDest) {
-
+                NavHost(
+                    navController = navController,
+                    startDestination = startDest
+                ) {
                     composable("login") {
                         LoginScreen(
                             onLoggedIn = {
@@ -72,6 +73,7 @@ class MainActivity : ComponentActivity() {
                         HomeScreen(
                             onNavigateToMap = { navController.navigate("map") },
                             onNavigateToPlaces = { navController.navigate("places") },
+                            onNavigateToCities = { navController.navigate("cities") },
                             onNavigateToProfile = { navController.navigate("profile") }
                         )
                     }
@@ -89,7 +91,10 @@ class MainActivity : ComponentActivity() {
                     }
 
                     composable("map") {
-                        OsmdroidWorldMapScreen(navController, placesViewModel)
+                        OsmdroidWorldMapScreen(
+                            navController = navController,
+                            placesViewModel = placesViewModel
+                        )
                     }
 
                     composable("places") {
@@ -123,6 +128,20 @@ class MainActivity : ComponentActivity() {
                                 onBack = { navController.popBackStack() }
                             )
                         }
+                    }
+
+                    composable("cities") {
+                        CitiesScreen(
+                            onAddCity = { navController.navigate("add_city") },
+                            onBack = { navController.popBackStack() }
+                        )
+                    }
+
+                    composable("add_city") {
+                        AddCityScreen(
+                            onSaved = { navController.popBackStack() },
+                            onCancel = { navController.popBackStack() }
+                        )
                     }
                 }
             }
