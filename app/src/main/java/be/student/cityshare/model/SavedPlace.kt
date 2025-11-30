@@ -9,5 +9,8 @@ data class SavedPlace(
     val category: String = "",
     val imageUrl: String = "",
     val rating: Int = 0,
-    val comment: String = ""
+    val comment: String = "",
+    val cityId: String? = null,
+    val cityName: String? = null,
+    val country: String? = null
 )

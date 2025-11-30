@@ -27,7 +27,8 @@ data class City(
 @Composable
 fun CitiesScreen(
     onAddCity: () -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onCityClick: (City) -> Unit
 ) {
     var cities by remember { mutableStateOf(listOf<City>()) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -96,7 +97,10 @@ fun CitiesScreen(
             } else {
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(cities) { city ->
-                        ElevatedCard(Modifier.fillMaxWidth()) {
+                        ElevatedCard(
+                            modifier = Modifier.fillMaxWidth(),
+                            onClick = { onCityClick(city) }
+                        ) {
                             Column(Modifier.padding(16.dp)) {
                                 Text(city.name, style = MaterialTheme.typography.titleMedium)
                                 val subtitle = listOf(city.country, city.description)

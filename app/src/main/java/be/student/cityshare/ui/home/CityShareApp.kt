@@ -9,6 +9,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import be.student.cityshare.ui.cities.AddCityScreen
 import be.student.cityshare.ui.cities.CitiesScreen
+import be.student.cityshare.ui.places.CityDetailScreen   // 🔹 NIEUW
 import be.student.cityshare.ui.home.HomeScreen
 import be.student.cityshare.ui.map.OsmdroidWorldMapScreen
 import be.student.cityshare.ui.places.AddPlaceScreen
@@ -18,13 +19,14 @@ import be.student.cityshare.ui.places.PlacesViewModel
 import be.student.cityshare.ui.profile.ProfileScreen
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
+import java.net.URLEncoder
+import java.net.URLDecoder
 
 @Composable
 fun CityShareApp() {
     val navController = rememberNavController()
     val placesViewModel: PlacesViewModel = viewModel()
 
-    // Als je login wilt, kan je hier ook "login" als startDestination zetten.
     NavHost(
         navController = navController,
         startDestination = "home"
@@ -108,6 +110,28 @@ fun CityShareApp() {
         composable("cities") {
             CitiesScreen(
                 onAddCity = { navController.navigate("add_city") },
+                onBack = { navController.popBackStack() },
+                onCityClick = { city ->
+                    val encodedName = URLEncoder.encode(city.name, "UTF-8")
+                    navController.navigate("city_detail/${city.id}/$encodedName")
+                }
+            )
+        }
+
+        composable(
+            route = "city_detail/{cityId}/{cityName}",
+            arguments = listOf(
+                navArgument("cityId") { type = NavType.StringType },
+                navArgument("cityName") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val cityId = backStackEntry.arguments?.getString("cityId") ?: ""
+            val cityNameEncoded = backStackEntry.arguments?.getString("cityName") ?: ""
+            val cityName = URLDecoder.decode(cityNameEncoded, "UTF-8")
+
+            CityDetailScreen(
+                cityId = cityId,
+                cityName = cityName,
                 onBack = { navController.popBackStack() }
             )
         }

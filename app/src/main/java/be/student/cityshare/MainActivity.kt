@@ -12,6 +12,7 @@ import be.student.cityshare.ui.auth.LoginScreen
 import be.student.cityshare.ui.auth.RegisterScreen
 import be.student.cityshare.ui.cities.AddCityScreen
 import be.student.cityshare.ui.cities.CitiesScreen
+import be.student.cityshare.ui.places.CityDetailScreen
 import be.student.cityshare.ui.home.HomeScreen
 import be.student.cityshare.ui.map.OsmdroidWorldMapScreen
 import be.student.cityshare.ui.places.AddPlaceScreen
@@ -133,6 +134,22 @@ class MainActivity : ComponentActivity() {
                     composable("cities") {
                         CitiesScreen(
                             onAddCity = { navController.navigate("add_city") },
+                            onBack = { navController.popBackStack() },
+                            onCityClick = { city ->
+                                val encodedName = java.net.URLEncoder.encode(city.name, "UTF-8")
+                                navController.navigate("city_detail/${city.id}/$encodedName")
+                            }
+                        )
+                    }
+
+                    composable("city_detail/{cityId}/{cityName}") { backStackEntry ->
+                        val cityId = backStackEntry.arguments?.getString("cityId") ?: ""
+                        val cityNameEncoded = backStackEntry.arguments?.getString("cityName") ?: ""
+                        val cityName = java.net.URLDecoder.decode(cityNameEncoded, "UTF-8")
+
+                        CityDetailScreen(
+                            cityId = cityId,
+                            cityName = cityName,
                             onBack = { navController.popBackStack() }
                         )
                     }

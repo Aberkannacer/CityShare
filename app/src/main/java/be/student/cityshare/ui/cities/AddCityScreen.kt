@@ -69,21 +69,24 @@ fun AddCityScreen(
                     if (name.isBlank()) { error = "Naam is verplicht"; return@Button }
                     loading = true; error = null
                     val userId = Firebase.auth.currentUser?.uid
+                    val trimmedName = name.trim()
+                    val trimmedCountry = country.trim()
+
                     val data = hashMapOf(
-                        "name" to name.trim(),
-                        "country" to country.trim(),
+                        "name" to trimmedName,
+                        "searchName" to trimmedName.lowercase(),
+                        "country" to trimmedCountry,
                         "description" to description.trim(),
                         "createdBy" to userId,
                         "createdAt" to com.google.firebase.Timestamp.now()
                     )
 
-                    // Start de opslagactie...
+
                     FirebaseFirestore.getInstance().collection("cities")
                         .add(data)
                         .addOnFailureListener { error = it.message ?: "Opslaan mislukt" }
                         .addOnCompleteListener { loading = false }
 
-                    // ...en navigeer ONMIDDELLIJK terug.
                     onSaved()
                 }
             ) { Text("Opslaan") }
