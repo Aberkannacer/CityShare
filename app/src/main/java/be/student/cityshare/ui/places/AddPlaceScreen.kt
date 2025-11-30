@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import android.widget.Toast
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -187,7 +188,14 @@ fun AddPlaceScreen(
                         category = category,
                         imageUri = imageUri,
                         rating = rating,
-                        comment = comment
+                        comment = comment,
+                        onNewCityCreated = { cityName ->
+                            Toast.makeText(
+                                context,
+                                "Nieuwe stad aangemaakt: $cityName",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
                     )
                     onSaved()
                 },

@@ -82,7 +82,8 @@ class PlacesViewModel : ViewModel() {
         category: String,
         imageUri: Uri?,
         rating: Int,
-        comment: String
+        comment: String,
+        onNewCityCreated: ((String) -> Unit)? = null
     ) {
         val userId = auth.currentUser?.uid ?: return
 
@@ -90,7 +91,12 @@ class PlacesViewModel : ViewModel() {
             val id = UUID.randomUUID().toString()
             val localPath = imageUri?.let { saveImageToInternalStorage(context, it) } ?: ""
 
-            val cityRef = resolveOrCreateCityForLocation(context, lat, lng)
+            val resolveResult = resolveOrCreateCityForLocation(context, lat, lng)
+            val cityRef = resolveResult?.city
+
+            if (resolveResult?.isNew == true && cityRef != null) {
+                onNewCityCreated?.invoke(cityRef.name)
+            }
 
             val place = SavedPlace(
                 id = id,
@@ -112,11 +118,12 @@ class PlacesViewModel : ViewModel() {
                 .set(place)
         }
     }
+
     private suspend fun resolveOrCreateCityForLocation(
         context: Context,
         lat: Double,
         lng: Double
-    ): CityRef? = withContext(Dispatchers.IO) {
+    ): CityResolveResult? = withContext(Dispatchers.IO) {
         try {
             val geocoder = Geocoder(context, Locale.getDefault())
             val results = geocoder.getFromLocation(lat, lng, 1)
@@ -137,10 +144,14 @@ class PlacesViewModel : ViewModel() {
             val existingDoc = snapshot.documents.firstOrNull()
 
             if (existingDoc != null) {
-                return@withContext CityRef(
+                val existingCity = CityRef(
                     id = existingDoc.id,
                     name = existingDoc.getString("name") ?: cityName,
                     country = existingDoc.getString("country") ?: countryName
+                )
+                return@withContext CityResolveResult(
+                    city = existingCity,
+                    isNew = false
                 )
             }
 
@@ -158,10 +169,15 @@ class PlacesViewModel : ViewModel() {
 
             Tasks.await(newDoc.set(data))
 
-            CityRef(
+            val newCity = CityRef(
                 id = newDoc.id,
                 name = cityName,
                 country = countryName
+            )
+
+            CityResolveResult(
+                city = newCity,
+                isNew = true
             )
         } catch (e: Exception) {
             e.printStackTrace()
@@ -172,5 +188,9 @@ class PlacesViewModel : ViewModel() {
         val id: String,
         val name: String,
         val country: String?
+    )
+    data class CityResolveResult(
+        val city: CityRef,
+        val isNew: Boolean
     )
 }
