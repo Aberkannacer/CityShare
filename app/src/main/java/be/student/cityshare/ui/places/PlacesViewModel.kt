@@ -21,6 +21,7 @@ import com.google.android.gms.tasks.Tasks
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.Locale
+import be.student.cityshare.utils.uriToBase64
 
 class PlacesViewModel : ViewModel() {
 
@@ -89,7 +90,8 @@ class PlacesViewModel : ViewModel() {
 
         viewModelScope.launch {
             val id = UUID.randomUUID().toString()
-            val localPath = imageUri?.let { saveImageToInternalStorage(context, it) } ?: ""
+
+            val imageBase64 = imageUri?.let { uriToBase64(context, it) }
 
             val resolveResult = resolveOrCreateCityForLocation(context, lat, lng)
             val cityRef = resolveResult?.city
@@ -105,7 +107,8 @@ class PlacesViewModel : ViewModel() {
                 latitude = lat,
                 longitude = lng,
                 category = category,
-                imageUrl = localPath,
+                imageUrl = "",
+                imageBase64 = imageBase64,
                 rating = rating,
                 comment = comment,
                 cityId = cityRef?.id,
@@ -116,6 +119,10 @@ class PlacesViewModel : ViewModel() {
             db.collection("places")
                 .document(id)
                 .set(place)
+                .addOnSuccessListener {
+                }
+                .addOnFailureListener {
+                }
         }
     }
 

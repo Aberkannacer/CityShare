@@ -8,6 +8,7 @@ data class SavedPlace(
     val longitude: Double = 0.0,
     val category: String = "",
     val imageUrl: String = "",
+    val imageBase64: String? = null,
     val rating: Int = 0,
     val comment: String = "",
     val cityId: String? = null,
