@@ -1,11 +1,13 @@
 package be.student.cityshare.ui.places
 
 import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -25,11 +27,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import android.widget.Toast
+import be.student.cityshare.utils.getAddressFromLocation
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -41,8 +43,14 @@ fun AddPlaceScreen(
     placesViewModel: PlacesViewModel
 ) {
     var title by remember { mutableStateOf("") }
+
     val categories by placesViewModel.categories.collectAsState()
     var category by remember { mutableStateOf("") }
+
+    var address by remember { mutableStateOf<String?>(null) }
+    var isAddressLoading by remember { mutableStateOf(true) }
+
+    val context = LocalContext.current
 
     LaunchedEffect(categories) {
         if (category.isBlank() && categories.isNotEmpty()) {
@@ -50,11 +58,17 @@ fun AddPlaceScreen(
         }
     }
 
+    LaunchedEffect(lat, lng) {
+        isAddressLoading = true
+        address = withContext(Dispatchers.IO) {
+            getAddressFromLocation(context, lat, lng)
+        }
+        isAddressLoading = false
+    }
+
     var imageUri by remember { mutableStateOf<Uri?>(null) }
     var rating by remember { mutableStateOf(0) }
     var comment by remember { mutableStateOf("") }
-
-    val context = LocalContext.current
 
     val pickImageLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -66,6 +80,7 @@ fun AddPlaceScreen(
             .padding(16.dp)
     ) {
 
+        // Top bar
         Box(modifier = Modifier.fillMaxWidth()) {
             IconButton(
                 onClick = onCancel,
@@ -87,8 +102,18 @@ fun AddPlaceScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text(text = "Lat: $lat")
-            Text(text = "Lng: $lng")
+            Text(text = "Adres")
+            when {
+                isAddressLoading -> {
+                    Text(text = "Adres wordt geladen...")
+                }
+                !address.isNullOrBlank() -> {
+                    Text(text = address!!)
+                }
+                else -> {
+                    Text(text = "Adres niet gevonden", color = Color.Red)
+                }
+            }
 
             TextField(
                 value = title,

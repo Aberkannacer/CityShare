@@ -150,7 +150,10 @@ class MainActivity : ComponentActivity() {
                         CityDetailScreen(
                             cityId = cityId,
                             cityName = cityName,
-                            onBack = { navController.popBackStack() }
+                            onBack = { navController.popBackStack() },
+                            onPlaceClick = { place ->
+                                navController.navigate("place_detail/${place.id}")
+                            }
                         )
                     }
 

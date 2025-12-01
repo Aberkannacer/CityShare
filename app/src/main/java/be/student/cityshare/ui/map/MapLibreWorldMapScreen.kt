@@ -89,25 +89,21 @@ fun MapLibreWorldMapScreen(
         }
         updateMarkers(map, placesToDisplay, markerPlaceMap, context, selectedCategory != null)
 
-        // Stop elke lopende animatie voordat we een nieuwe starten
         map?.cancelTransitions()
 
-        // Alleen animeren als er een filter is geselecteerd
         if (selectedCategory != null) {
             when {
-                // Eén resultaat: zoom direct naar die locatie (lost crash op)
                 placesToDisplay.size == 1 -> {
                     val singlePlace = placesToDisplay.first()
                     val target = LatLng(singlePlace.latitude, singlePlace.longitude)
                     val cameraUpdate = CameraUpdateFactory.newCameraPosition(
                         CameraPosition.Builder()
                             .target(target)
-                            .zoom(15.0) // Goed zoomniveau voor één locatie
+                            .zoom(15.0)
                             .build()
                     )
                     map?.easeCamera(cameraUpdate, 1000)
                 }
-                // Meerdere resultaten: bouw een kader en zoom daar naartoe
                 placesToDisplay.size > 1 -> {
                     val boundsBuilder = LatLngBounds.Builder()
                     placesToDisplay.forEach { place ->
@@ -281,7 +277,7 @@ private fun updateMarkers(
         canvas.drawCircle(size / 2f, size / 2f, size / 2f, paint)
         IconFactory.getInstance(context).fromBitmap(bitmap)
     } else {
-        null // Use default marker
+        null
     }
 
     places.forEach { place ->

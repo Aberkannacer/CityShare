@@ -22,6 +22,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.Locale
 import be.student.cityshare.utils.uriToBase64
+import be.student.cityshare.utils.getAddressFromLocation
 
 class PlacesViewModel : ViewModel() {
 
@@ -94,8 +95,11 @@ class PlacesViewModel : ViewModel() {
 
         viewModelScope.launch {
             val id = UUID.randomUUID().toString()
-
             val imageBase64 = imageUri?.let { uriToBase64(context, it) }
+
+            val address = withContext(Dispatchers.IO) {
+                getAddressFromLocation(context, lat, lng)
+            }
 
             val resolveResult = resolveOrCreateCityForLocation(context, lat, lng)
             val cityRef = resolveResult?.city
@@ -117,7 +121,8 @@ class PlacesViewModel : ViewModel() {
                 comment = comment,
                 cityId = cityRef?.id,
                 cityName = cityRef?.name,
-                country = cityRef?.country
+                country = cityRef?.country,
+                address = address
             )
 
             db.collection("places")

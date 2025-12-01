@@ -72,7 +72,6 @@ fun PlaceDetailScreen(
                     }
 
                     place.imageUrl.isNotBlank() -> {
-                        // Fallback oude foto's
                         AsyncImage(
                             model = place.imageUrl,
                             contentDescription = place.title,
@@ -85,6 +84,18 @@ fun PlaceDetailScreen(
                 }
 
                 Text(text = place.category, style = MaterialTheme.typography.labelLarge)
+
+                if (!place.address.isNullOrBlank()) {
+                    Text(
+                        text = "Adres",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color.Gray
+                    )
+                    Text(
+                        text = place.address!!,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
 
                 if (place.rating > 0) {
                     Row {

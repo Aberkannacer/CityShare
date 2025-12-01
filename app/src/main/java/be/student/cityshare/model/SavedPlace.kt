@@ -13,5 +13,6 @@ data class SavedPlace(
     val comment: String = "",
     val cityId: String? = null,
     val cityName: String? = null,
-    val country: String? = null
+    val country: String? = null,
+    val address: String? = null
 )

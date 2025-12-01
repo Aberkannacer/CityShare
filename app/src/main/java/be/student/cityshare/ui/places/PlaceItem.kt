@@ -15,6 +15,8 @@ import be.student.cityshare.utils.toBitmap
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import java.io.File
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.text.style.TextOverflow
 
 @Composable
 fun PlaceItem(place: SavedPlace) {
@@ -53,8 +55,17 @@ fun PlaceItem(place: SavedPlace) {
         }
 
         Column(modifier = Modifier.padding(start = 8.dp)) {
-            Text(place.title)
-            Text(place.category)
+            Text(place.title, style = MaterialTheme.typography.titleMedium)
+            Text(place.category, style = MaterialTheme.typography.bodySmall)
+
+            if (!place.address.isNullOrBlank()) {
+                Text(
+                    text = place.address!!,
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         }
     }
 }
