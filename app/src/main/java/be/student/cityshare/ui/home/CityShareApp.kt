@@ -1,6 +1,8 @@
 package be.student.cityshare
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -15,6 +17,7 @@ import be.student.cityshare.ui.places.CityDetailScreen
 import be.student.cityshare.ui.home.HomeScreen
 import be.student.cityshare.ui.map.OsmdroidWorldMapScreen
 import be.student.cityshare.ui.messaging.ChatScreen
+import be.student.cityshare.ui.messaging.MessagingViewModel
 import be.student.cityshare.ui.messaging.UserListScreen
 import be.student.cityshare.ui.places.AddPlaceScreen
 import be.student.cityshare.ui.places.PlaceDetailScreen
@@ -30,6 +33,9 @@ import java.net.URLDecoder
 fun CityShareApp() {
     val navController = rememberNavController()
     val placesViewModel: PlacesViewModel = viewModel()
+    val messagingViewModel: MessagingViewModel = viewModel()
+
+    val hasUnreadMessages by messagingViewModel.hasUnreadMessages.collectAsState()
 
     val startDestination = if (Firebase.auth.currentUser != null) "home" else "login"
 
@@ -65,12 +71,14 @@ fun CityShareApp() {
                 onNavigateToPlaces = { navController.navigate("places") },
                 onNavigateToCities = { navController.navigate("cities") },
                 onNavigateToProfile = { navController.navigate("profile") },
-                onNavigateToMessaging = { navController.navigate("user_list") }
+                onNavigateToMessaging = { navController.navigate("user_list") },
+                hasUnreadMessages = hasUnreadMessages
             )
         }
 
         composable("user_list") {
             UserListScreen(
+                messagingViewModel = messagingViewModel,
                 onUserClick = { user ->
                     val encodedEmail = URLEncoder.encode(user.email, "UTF-8")
                     navController.navigate("chat/${user.uid}/$encodedEmail")
@@ -92,7 +100,8 @@ fun CityShareApp() {
             ChatScreen(
                 receiverId = receiverId,
                 receiverEmail = receiverEmail,
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                messagingViewModel = messagingViewModel
             )
         }
 

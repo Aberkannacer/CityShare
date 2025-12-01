@@ -18,32 +18,20 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import be.student.cityshare.model.User
-import com.google.firebase.auth.ktx.auth
-import com.google.firebase.firestore.ktx.firestore
-import com.google.firebase.ktx.Firebase
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UserListScreen(
+    messagingViewModel: MessagingViewModel,
     onUserClick: (User) -> Unit,
     onBack: () -> Unit
 ) {
-    val (users, setUsers) = remember { mutableStateOf<List<User>>(emptyList()) }
-    val currentUser = Firebase.auth.currentUser
-
-    LaunchedEffect(Unit) {
-        Firebase.firestore.collection("users").get().addOnSuccessListener { result ->
-            val userList = result.toObjects(User::class.java)
-            // Filter de huidige gebruiker uit de lijst
-            setUsers(userList.filter { it.uid != currentUser?.uid })
-        }
-    }
+    val users by messagingViewModel.users.collectAsState()
 
     Scaffold(
         topBar = {
@@ -77,7 +65,7 @@ private fun UserListItem(user: User, onClick: () -> Unit) {
             .clickable(onClick = onClick)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(text = user.email)
+            Text(text = user.displayName)
         }
     }
 }

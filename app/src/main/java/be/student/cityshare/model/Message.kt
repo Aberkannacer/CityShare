@@ -7,5 +7,6 @@ data class Message(
     val senderId: String = "",
     val receiverId: String = "",
     val text: String = "",
-    @ServerTimestamp val timestamp: Date? = null
+    @ServerTimestamp val timestamp: Date? = null,
+    val isRead: Boolean = false
 )

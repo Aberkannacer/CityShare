@@ -19,17 +19,16 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import be.student.cityshare.model.Message
 import com.google.firebase.auth.ktx.auth
-import com.google.firebase.firestore.Query
-import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -37,25 +36,20 @@ import com.google.firebase.ktx.Firebase
 fun ChatScreen(
     receiverId: String,
     receiverEmail: String,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    messagingViewModel: MessagingViewModel
 ) {
     val senderId = Firebase.auth.currentUser?.uid ?: return
-    val db = Firebase.firestore
+    val messages by messagingViewModel.messages.collectAsState()
+    val userMap by messagingViewModel.userMap.collectAsState()
 
     var messageText by remember { mutableStateOf("") }
-    var messages by remember { mutableStateOf<List<Message>>(emptyList()) }
 
-    // Unieke ID voor het gesprek, ongeacht wie de zender of ontvanger is
     val conversationId = listOf(senderId, receiverId).sorted().joinToString("_")
 
-    // Luister naar berichten in dit gesprek
     LaunchedEffect(conversationId) {
-        db.collection("conversations").document(conversationId).collection("messages")
-            .orderBy("timestamp", Query.Direction.ASCENDING)
-            .addSnapshotListener { snapshot, error ->
-                if (error != null) return@addSnapshotListener
-                messages = snapshot?.toObjects(Message::class.java) ?: emptyList()
-            }
+        messagingViewModel.loadMessages(conversationId)
+        messagingViewModel.markMessagesAsRead(conversationId)
     }
 
     Scaffold(
@@ -75,13 +69,16 @@ fun ChatScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            LazyColumn(modifier = Modifier.weight(1f)) {
+            LazyColumn(modifier = Modifier.weight(1f).padding(horizontal = 8.dp)) {
                 items(messages) {
-                    Text(text = "${it.senderId}: ${it.text}", modifier = Modifier.padding(8.dp))
+                    val senderName = userMap[it.senderId] ?: "Onbekend"
+                    Text(
+                        text = "$senderName: ${it.text}",
+                        fontWeight = if (it.senderId == senderId) FontWeight.Bold else FontWeight.Normal
+                    )
                 }
             }
 
-            // Invoerveld en verzendknop
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -96,9 +93,7 @@ fun ChatScreen(
                 )
                 IconButton(onClick = {
                     if (messageText.isNotBlank()) {
-                        val message = Message(senderId, receiverId, messageText)
-                        db.collection("conversations").document(conversationId)
-                            .collection("messages").add(message)
+                        messagingViewModel.sendMessage(receiverId, messageText)
                         messageText = ""
                     }
                 }) {
