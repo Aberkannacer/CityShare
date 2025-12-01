@@ -1,29 +1,42 @@
 package be.student.cityshare.ui.places
 
-import android.Manifest
-import android.content.pm.PackageManager
-import android.location.Location
-import android.location.LocationManager
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
-import be.student.cityshare.utils.toBitmap
 import coil.compose.AsyncImage
-import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,50 +48,15 @@ fun PlaceDetailScreen(
     val places by placesViewModel.places.collectAsState()
     val place = places.find { it.id == placeId }
 
-    val context = LocalContext.current
+    var rating by remember { mutableIntStateOf(0) }
+    var comment by remember { mutableStateOf("") }
 
-    var distanceMeters by remember { mutableStateOf<Double?>(null) }
-    var distanceError by remember { mutableStateOf<String?>(null) }
-
+    // Initialiseer de staat met de waarden van de plaats zodra deze geladen is
     LaunchedEffect(place) {
-        distanceMeters = null
-        distanceError = null
-
-        if (place == null) return@LaunchedEffect
-
-        val hasFine =
-            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
-                    PackageManager.PERMISSION_GRANTED
-        val hasCoarse =
-            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) ==
-                    PackageManager.PERMISSION_GRANTED
-
-        if (!hasFine && !hasCoarse) {
-            distanceError = "Locatietoestemming niet gegeven"
-            return@LaunchedEffect
+        place?.let {
+            rating = it.rating
+            comment = it.comment
         }
-
-        val lm = context.getSystemService(android.content.Context.LOCATION_SERVICE) as LocationManager
-
-        val userLocation: Location? =
-            lm.getLastKnownLocation(LocationManager.GPS_PROVIDER)
-                ?: lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
-
-        if (userLocation == null) {
-            distanceError = "Kan je huidige locatie niet bepalen"
-            return@LaunchedEffect
-        }
-
-        val results = FloatArray(1)
-        Location.distanceBetween(
-            userLocation.latitude,
-            userLocation.longitude,
-            place.latitude,
-            place.longitude,
-            results
-        )
-
-        distanceMeters = results[0].toDouble()
     }
 
     Scaffold(
@@ -94,11 +72,6 @@ fun PlaceDetailScreen(
         }
     ) { padding ->
         if (place != null) {
-
-            val bitmap = remember(place.imageBase64) {
-                place.imageBase64?.toBitmap()
-            }
-
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -107,105 +80,54 @@ fun PlaceDetailScreen(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-
-                when {
-                    bitmap != null -> {
-                        Image(
-                            bitmap = bitmap.asImageBitmap(),
-                            contentDescription = place.title,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(250.dp),
-                            contentScale = ContentScale.Crop
-                        )
-                    }
-
-                    place.imageUrl.isNotBlank() -> {
-                        AsyncImage(
-                            model = place.imageUrl,
-                            contentDescription = place.title,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(250.dp),
-                            contentScale = ContentScale.Crop
-                        )
-                    }
+                if (place.imageUrl.isNotBlank()) {
+                    AsyncImage(
+                        model = place.imageUrl,
+                        contentDescription = place.title,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(250.dp),
+                        contentScale = ContentScale.Crop
+                    )
                 }
 
                 Text(text = place.category, style = MaterialTheme.typography.labelLarge)
 
-                if (!place.address.isNullOrBlank()) {
-                    Text(
-                        text = "Adres",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = Color.Gray
-                    )
-                    Text(
-                        text = place.address!!,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+                // Interactieve sterrenbeoordeling
+                Row {
+                    (1..5).forEach { starIndex ->
+                        Icon(
+                            imageVector = if (starIndex <= rating) Icons.Default.Star else Icons.Default.StarBorder,
+                            contentDescription = "Rating",
+                            modifier = Modifier.clickable { rating = starIndex },
+                            tint = if (starIndex <= rating) Color(0xFFFFC107) else Color.Gray
+                        )
+                    }
                 }
 
-                Text(
-                    text = "Afstand tot jouw locatie",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = Color.Gray
+                // Interactief commentaarveld
+                TextField(
+                    value = comment,
+                    onValueChange = { comment = it },
+                    label = { Text("Voeg commentaar toe of wijzig het") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 3
                 )
 
-                when {
-                    distanceError != null -> {
-                        Text(
-                            text = distanceError ?: "",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.Red
-                        )
-                    }
+                Spacer(modifier = Modifier.weight(1f))
 
-                    distanceMeters == null -> {
-                        Text(
-                            text = "Afstand wordt berekend...",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-
-                    else -> {
-                        val km = distanceMeters!! / 1000.0
-                        val kmText = String.format(Locale.getDefault(), "%.1f km", km)
-                        Text(
-                            text = kmText,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
+                Button(
+                    onClick = {
+                        placesViewModel.updatePlaceDetails(place.id, rating, comment)
+                        onBack() // Keer terug na het opslaan
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Beoordeling Opslaan")
                 }
-
-                if (place.rating > 0) {
-                    Row {
-                        (1..5).forEach { starIndex ->
-                            Icon(
-                                imageVector = if (starIndex <= place.rating) Icons.Default.Star else Icons.Default.StarBorder,
-                                contentDescription = "Rating",
-                                tint = if (starIndex <= place.rating) Color(0xFFFFC107) else Color.Gray
-                            )
-                        }
-                    }
-                }
-
-                if (place.comment.isNotBlank()) {
-                    Text(
-                        text = place.comment,
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
             }
         } else {
-            Text(
-                "Laden...",
-                modifier = Modifier
-                    .padding(padding)
-                    .padding(16.dp)
-            )
+            Text("Laden...", modifier = Modifier.padding(padding))
         }
     }
 }

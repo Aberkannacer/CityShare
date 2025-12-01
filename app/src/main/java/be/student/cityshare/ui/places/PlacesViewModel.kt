@@ -15,14 +15,6 @@ import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileOutputStream
 import java.util.UUID
-import android.location.Geocoder
-import com.google.firebase.Timestamp
-import com.google.android.gms.tasks.Tasks
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import java.util.Locale
-import be.student.cityshare.utils.uriToBase64
-import be.student.cityshare.utils.getAddressFromLocation
 
 class PlacesViewModel : ViewModel() {
 
@@ -32,12 +24,8 @@ class PlacesViewModel : ViewModel() {
     private val _places = MutableStateFlow<List<SavedPlace>>(emptyList())
     val places: StateFlow<List<SavedPlace>> = _places
 
-    private val _categories = MutableStateFlow<List<String>>(emptyList())
-    val categories: StateFlow<List<String>> = _categories
-
     init {
         listenToPlaces()
-        loadCategories()
     }
 
     private fun listenToPlaces() {
@@ -86,27 +74,14 @@ class PlacesViewModel : ViewModel() {
         lat: Double,
         lng: Double,
         category: String,
-        imageUri: Uri?,
-        rating: Int,
-        comment: String,
-        onNewCityCreated: ((String) -> Unit)? = null
+        imageUri: Uri?
     ) {
         val userId = auth.currentUser?.uid ?: return
 
         viewModelScope.launch {
             val id = UUID.randomUUID().toString()
-            val imageBase64 = imageUri?.let { uriToBase64(context, it) }
 
-            val address = withContext(Dispatchers.IO) {
-                getAddressFromLocation(context, lat, lng)
-            }
-
-            val resolveResult = resolveOrCreateCityForLocation(context, lat, lng)
-            val cityRef = resolveResult?.city
-
-            if (resolveResult?.isNew == true && cityRef != null) {
-                onNewCityCreated?.invoke(cityRef.name)
-            }
+            val localPath = imageUri?.let { saveImageToInternalStorage(context, it) } ?: ""
 
             val place = SavedPlace(
                 id = id,
@@ -115,114 +90,27 @@ class PlacesViewModel : ViewModel() {
                 latitude = lat,
                 longitude = lng,
                 category = category,
-                imageUrl = "",
-                imageBase64 = imageBase64,
-                rating = rating,
-                comment = comment,
-                cityId = cityRef?.id,
-                cityName = cityRef?.name,
-                country = cityRef?.country,
-                address = address
+                imageUrl = localPath,
+                rating = 0,      // Nieuwe plaatsen hebben nog geen rating
+                comment = ""     // en geen commentaar
             )
 
             db.collection("places")
                 .document(id)
                 .set(place)
-                .addOnSuccessListener {
-                }
-                .addOnFailureListener {
-                }
         }
     }
 
-    private suspend fun resolveOrCreateCityForLocation(
-        context: Context,
-        lat: Double,
-        lng: Double
-    ): CityResolveResult? = withContext(Dispatchers.IO) {
-        try {
-            val geocoder = Geocoder(context, Locale.getDefault())
-            val results = geocoder.getFromLocation(lat, lng, 1)
-            val addr = results?.firstOrNull() ?: return@withContext null
+    fun updatePlaceDetails(placeId: String, rating: Int, comment: String) {
+        if (placeId.isBlank()) return
 
-            val cityName = addr.locality
-                ?: addr.subAdminArea
-                ?: addr.adminArea
-                ?: return@withContext null
+        val updates = mapOf(
+            "rating" to rating,
+            "comment" to comment
+        )
 
-            val countryName = addr.countryName
-            val searchName = cityName.trim().lowercase()
-
-            val citiesQuery = db.collection("cities")
-                .whereEqualTo("searchName", searchName)
-
-            val snapshot = Tasks.await(citiesQuery.get())
-            val existingDoc = snapshot.documents.firstOrNull()
-
-            if (existingDoc != null) {
-                val existingCity = CityRef(
-                    id = existingDoc.id,
-                    name = existingDoc.getString("name") ?: cityName,
-                    country = existingDoc.getString("country") ?: countryName
-                )
-                return@withContext CityResolveResult(
-                    city = existingCity,
-                    isNew = false
-                )
-            }
-
-            val userId = auth.currentUser?.uid
-            val newDoc = db.collection("cities").document()
-
-            val data = hashMapOf(
-                "name" to cityName,
-                "searchName" to searchName,
-                "country" to (countryName ?: ""),
-                "description" to "",
-                "createdBy" to userId,
-                "createdAt" to Timestamp.now()
-            )
-
-            Tasks.await(newDoc.set(data))
-
-            val newCity = CityRef(
-                id = newDoc.id,
-                name = cityName,
-                country = countryName
-            )
-
-            CityResolveResult(
-                city = newCity,
-                isNew = true
-            )
-        } catch (e: Exception) {
-            e.printStackTrace()
-            null
-        }
-    }
-    data class CityRef(
-        val id: String,
-        val name: String,
-        val country: String?
-    )
-    data class CityResolveResult(
-        val city: CityRef,
-        val isNew: Boolean
-    )
-    private fun loadCategories() {
-        db.collection("categories")
-            .get()
-            .addOnSuccessListener { snapshot ->
-                val names = snapshot.documents
-                    .mapNotNull { it.getString("name") }
-                    .sorted()
-
-                if (names.isNotEmpty()) {
-                    _categories.value = names
-                }
-            }
-            .addOnFailureListener {
-                _categories.value = emptyList()
-            }
+        db.collection("places")
+            .document(placeId)
+            .update(updates)
     }
 }

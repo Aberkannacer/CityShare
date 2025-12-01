@@ -1,20 +1,16 @@
 package be.student.cityshare.ui.places
 
 import android.net.Uri
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -29,11 +25,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import be.student.cityshare.utils.getAddressFromLocation
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun AddPlaceScreen(
     lat: Double,
@@ -43,55 +35,27 @@ fun AddPlaceScreen(
     placesViewModel: PlacesViewModel
 ) {
     var title by remember { mutableStateOf("") }
-
-    val categories by placesViewModel.categories.collectAsState()
-    var category by remember { mutableStateOf("") }
-
-    var address by remember { mutableStateOf<String?>(null) }
-    var isAddressLoading by remember { mutableStateOf(true) }
+    var category by remember { mutableStateOf("Anders") }
+    var imageUri by remember { mutableStateOf<Uri?>(null) }
 
     val context = LocalContext.current
 
-    LaunchedEffect(categories) {
-        if (category.isBlank() && categories.isNotEmpty()) {
-            category = categories.first()
-        }
-    }
-
-    LaunchedEffect(lat, lng) {
-        isAddressLoading = true
-        address = withContext(Dispatchers.IO) {
-            getAddressFromLocation(context, lat, lng)
-        }
-        isAddressLoading = false
-    }
-
-    var imageUri by remember { mutableStateOf<Uri?>(null) }
-    var rating by remember { mutableStateOf(0) }
-    var comment by remember { mutableStateOf("") }
-
     val pickImageLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
-    ) { uri -> imageUri = uri }
+    ) { uri ->
+        imageUri = uri
+    }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
     ) {
-
-        // Top bar
         Box(modifier = Modifier.fillMaxWidth()) {
-            IconButton(
-                onClick = onCancel,
-                modifier = Modifier.align(Alignment.CenterStart)
-            ) {
+            IconButton(onClick = onCancel, modifier = Modifier.align(Alignment.CenterStart)) {
                 Icon(Icons.Default.ArrowBack, contentDescription = "Terug")
             }
-            Text(
-                text = "Nieuwe locatie opslaan",
-                modifier = Modifier.align(Alignment.Center)
-            )
+            Text("Nieuwe locatie opslaan", modifier = Modifier.align(Alignment.Center))
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -102,18 +66,8 @@ fun AddPlaceScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text(text = "Adres")
-            when {
-                isAddressLoading -> {
-                    Text(text = "Adres wordt geladen...")
-                }
-                !address.isNullOrBlank() -> {
-                    Text(text = address!!)
-                }
-                else -> {
-                    Text(text = "Adres niet gevonden", color = Color.Red)
-                }
-            }
+            Text(text = "Lat: $lat")
+            Text(text = "Lng: $lng")
 
             TextField(
                 value = title,
@@ -124,48 +78,28 @@ fun AddPlaceScreen(
 
             Text(text = "Categorie")
 
-            FlowRow(
-                modifier = Modifier.fillMaxWidth(),
+            Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                modifier = Modifier.fillMaxWidth()
             ) {
+                val categories = listOf("Eten", "Winkel", "Bezienswaardigheid", "Werk", "Anders")
                 categories.forEach { cat ->
                     Text(
                         text = cat,
                         modifier = Modifier
                             .clip(RoundedCornerShape(16.dp))
                             .background(
-                                if (category == cat) Color(0xFFD0D0D0) else Color.Transparent
+                                if (category == cat) Color.LightGray else Color.Transparent
                             )
                             .clickable { category = cat }
-                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
                     )
                 }
             }
 
-            Text(text = "Beoordeling")
-            Row {
-                (1..5).forEach { starIndex ->
-                    Icon(
-                        imageVector = if (starIndex <= rating) Icons.Default.Star else Icons.Default.StarBorder,
-                        contentDescription = "Star $starIndex",
-                        modifier = Modifier
-                            .padding(end = 4.dp)
-                            .clickable { rating = starIndex },
-                        tint = if (starIndex <= rating) Color(0xFFFFC107) else Color.Gray
-                    )
-                }
-            }
-
-            TextField(
-                value = comment,
-                onValueChange = { comment = it },
-                label = { Text("Commentaar (optioneel)") },
-                modifier = Modifier.fillMaxWidth(),
-                minLines = 3
-            )
-
-            Button(onClick = { pickImageLauncher.launch("image/*") }) {
+            Button(
+                onClick = { pickImageLauncher.launch("image/*") }
+            ) {
                 Text(text = "Kies foto")
             }
 
@@ -184,10 +118,8 @@ fun AddPlaceScreen(
 
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 16.dp)
+            modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Button(
                 onClick = onCancel,
@@ -203,16 +135,7 @@ fun AddPlaceScreen(
                         lat = lat,
                         lng = lng,
                         category = category,
-                        imageUri = imageUri,
-                        rating = rating,
-                        comment = comment,
-                        onNewCityCreated = { cityName ->
-                            Toast.makeText(
-                                context,
-                                "Nieuwe stad aangemaakt: $cityName",
-                                Toast.LENGTH_LONG
-                            ).show()
-                        }
+                        imageUri = imageUri
                     )
                     onSaved()
                 },
