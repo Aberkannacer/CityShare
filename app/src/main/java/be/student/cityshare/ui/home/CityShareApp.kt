@@ -7,11 +7,15 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import be.student.cityshare.ui.auth.LoginScreen
+import be.student.cityshare.ui.auth.RegisterScreen
 import be.student.cityshare.ui.cities.AddCityScreen
 import be.student.cityshare.ui.cities.CitiesScreen
-import be.student.cityshare.ui.places.CityDetailScreen   // 🔹 NIEUW
+import be.student.cityshare.ui.places.CityDetailScreen
 import be.student.cityshare.ui.home.HomeScreen
 import be.student.cityshare.ui.map.OsmdroidWorldMapScreen
+import be.student.cityshare.ui.messaging.ChatScreen
+import be.student.cityshare.ui.messaging.UserListScreen
 import be.student.cityshare.ui.places.AddPlaceScreen
 import be.student.cityshare.ui.places.PlaceDetailScreen
 import be.student.cityshare.ui.places.PlacesListScreen
@@ -27,16 +31,68 @@ fun CityShareApp() {
     val navController = rememberNavController()
     val placesViewModel: PlacesViewModel = viewModel()
 
+    val startDestination = if (Firebase.auth.currentUser != null) "home" else "login"
+
     NavHost(
         navController = navController,
-        startDestination = "home"
+        startDestination = startDestination
     ) {
+        composable("login") {
+            LoginScreen(
+                onLoggedIn = {
+                    navController.navigate("home") {
+                        popUpTo("login") { inclusive = true }
+                    }
+                },
+                onGoToRegister = { navController.navigate("register") }
+            )
+        }
+
+        composable("register") {
+            RegisterScreen(
+                onRegistered = {
+                    navController.navigate("home") {
+                        popUpTo("login") { inclusive = true }
+                    }
+                },
+                onGoToLogin = { navController.popBackStack() }
+            )
+        }
+
         composable("home") {
             HomeScreen(
                 onNavigateToMap = { navController.navigate("map") },
                 onNavigateToPlaces = { navController.navigate("places") },
                 onNavigateToCities = { navController.navigate("cities") },
-                onNavigateToProfile = { navController.navigate("profile") }
+                onNavigateToProfile = { navController.navigate("profile") },
+                onNavigateToMessaging = { navController.navigate("user_list") }
+            )
+        }
+
+        composable("user_list") {
+            UserListScreen(
+                onUserClick = { user ->
+                    val encodedEmail = URLEncoder.encode(user.email, "UTF-8")
+                    navController.navigate("chat/${user.uid}/$encodedEmail")
+                },
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            route = "chat/{receiverId}/{receiverEmail}",
+            arguments = listOf(
+                navArgument("receiverId") { type = NavType.StringType },
+                navArgument("receiverEmail") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val receiverId = backStackEntry.arguments?.getString("receiverId") ?: ""
+            val receiverEmailEncoded = backStackEntry.arguments?.getString("receiverEmail") ?: ""
+            val receiverEmail = URLDecoder.decode(receiverEmailEncoded, "UTF-8")
+            ChatScreen(
+                receiverId = receiverId,
+                receiverEmail = receiverEmail,
+                onBack = { navController.popBackStack() }
             )
         }
 
@@ -45,10 +101,8 @@ fun CityShareApp() {
                 onBack = { navController.popBackStack() },
                 onLogout = {
                     Firebase.auth.signOut()
-                    navController.navigate("home") {
-                        popUpTo(navController.graph.startDestinationId) {
-                            inclusive = true
-                        }
+                    navController.navigate("login") {
+                        popUpTo("home") { inclusive = true }
                     }
                 }
             )

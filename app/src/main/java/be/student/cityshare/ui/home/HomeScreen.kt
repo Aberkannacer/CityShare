@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.automirrored.filled.Message
 import androidx.compose.material.icons.filled.LocationCity
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Person
@@ -36,6 +37,7 @@ fun HomeScreen(
     onNavigateToPlaces: () -> Unit,
     onNavigateToCities: () -> Unit,
     onNavigateToProfile: () -> Unit,
+    onNavigateToMessaging: () -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -60,9 +62,14 @@ fun HomeScreen(
                 onClick = onNavigateToPlaces
             )
             HomeCard(
-                title = "Steden",
+                title = "Mijn Steden",
                 icon = Icons.Default.LocationCity,
                 onClick = onNavigateToCities
+            )
+            HomeCard(
+                title = "Berichten",
+                icon = Icons.AutoMirrored.Filled.Message,
+                onClick = onNavigateToMessaging
             )
             HomeCard(
                 title = "Profiel",
