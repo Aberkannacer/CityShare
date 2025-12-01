@@ -41,22 +41,14 @@ fun AddPlaceScreen(
     placesViewModel: PlacesViewModel
 ) {
     var title by remember { mutableStateOf("") }
+    val categories by placesViewModel.categories.collectAsState()
+    var category by remember { mutableStateOf("") }
 
-    val categories = listOf(
-        "Eten & Drinken",
-        "Koffiebar",
-        "Winkel",
-        "Supermarkt",
-        "Bezienswaardigheid",
-        "Natuur / Park",
-        "Sport & Fitness",
-        "Werk / School",
-        "Openbaar Vervoer",
-        "Vrije Tijd",
-        "Diensten",
-        "Overig"
-    )
-    var category by remember { mutableStateOf(categories.first()) }
+    LaunchedEffect(categories) {
+        if (category.isBlank() && categories.isNotEmpty()) {
+            category = categories.first()
+        }
+    }
 
     var imageUri by remember { mutableStateOf<Uri?>(null) }
     var rating by remember { mutableStateOf(0) }

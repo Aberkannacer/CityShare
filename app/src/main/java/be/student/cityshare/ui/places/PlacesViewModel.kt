@@ -31,8 +31,12 @@ class PlacesViewModel : ViewModel() {
     private val _places = MutableStateFlow<List<SavedPlace>>(emptyList())
     val places: StateFlow<List<SavedPlace>> = _places
 
+    private val _categories = MutableStateFlow<List<String>>(emptyList())
+    val categories: StateFlow<List<String>> = _categories
+
     init {
         listenToPlaces()
+        loadCategories()
     }
 
     private fun listenToPlaces() {
@@ -200,4 +204,20 @@ class PlacesViewModel : ViewModel() {
         val city: CityRef,
         val isNew: Boolean
     )
+    private fun loadCategories() {
+        db.collection("categories")
+            .get()
+            .addOnSuccessListener { snapshot ->
+                val names = snapshot.documents
+                    .mapNotNull { it.getString("name") }
+                    .sorted()
+
+                if (names.isNotEmpty()) {
+                    _categories.value = names
+                }
+            }
+            .addOnFailureListener {
+                _categories.value = emptyList()
+            }
+    }
 }

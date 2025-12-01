@@ -50,6 +50,10 @@ import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.MapEventsOverlay
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.TextButton
 
 @Composable
 fun OsmdroidWorldMapScreen(
@@ -59,7 +63,7 @@ fun OsmdroidWorldMapScreen(
     val context = LocalContext.current
     val places by placesViewModel.places.collectAsState()
 
-    var selectedCategory by remember { mutableStateOf<String?>(null) }
+    var selectedCategories by remember { mutableStateOf<Set<String>>(emptySet()) }
     var showFilterDialog by remember { mutableStateOf(false) }
 
     DisposableEffect(Unit) {
@@ -135,10 +139,13 @@ fun OsmdroidWorldMapScreen(
         }
     }
 
-    LaunchedEffect(places, selectedCategory) {
+    LaunchedEffect(mapView, places, selectedCategories) {
         val placesToDisplay =
-            if (selectedCategory == null) places
-            else places.filter { it.category == selectedCategory }
+            if (selectedCategories.isEmpty()) {
+                places
+            } else {
+                places.filter { it.category in selectedCategories }
+            }
 
         updateOsmdroidMarkers(mapView, placesToDisplay, navController)
     }
@@ -189,23 +196,63 @@ fun OsmdroidWorldMapScreen(
                 text = {
                     LazyColumn {
                         items(categories) { category ->
-                            Text(
-                                text = category,
+                            val isSelected = if (category == "Alle categorieën") {
+                                selectedCategories.isEmpty()
+                            } else {
+                                selectedCategories.contains(category)
+                            }
+
+                            Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable {
-                                        selectedCategory =
-                                            if (category == "Alle categorieën") null else category
-                                        showFilterDialog = false
+                                        if (category == "Alle categorieën") {
+                                            // Leeg setje = alles tonen
+                                            selectedCategories = emptySet()
+                                        } else {
+                                            selectedCategories =
+                                                if (selectedCategories.contains(category)) {
+                                                    selectedCategories - category
+                                                } else {
+                                                    selectedCategories + category
+                                                }
+                                        }
                                     }
-                                    .padding(vertical = 12.dp)
-                            )
+                                    .padding(vertical = 8.dp, horizontal = 16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Checkbox(
+                                    checked = isSelected,
+                                    onCheckedChange = {
+                                        if (category == "Alle categorieën") {
+                                            selectedCategories = emptySet()
+                                        } else {
+                                            selectedCategories =
+                                                if (selectedCategories.contains(category)) {
+                                                    selectedCategories - category
+                                                } else {
+                                                    selectedCategories + category
+                                                }
+                                        }
+                                    }
+                                )
+                                Spacer(modifier = Modifier.size(8.dp))
+                                Text(text = category)
+                            }
                         }
                     }
                 },
                 confirmButton = {
                     Button(onClick = { showFilterDialog = false }) {
-                        Text("Sluiten")
+                        Text("Toepassen")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = {
+                        selectedCategories = emptySet()
+                        showFilterDialog = false
+                    }) {
+                        Text("Reset")
                     }
                 }
             )
