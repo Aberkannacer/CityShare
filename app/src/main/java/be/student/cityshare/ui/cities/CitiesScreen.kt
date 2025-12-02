@@ -35,7 +35,7 @@ fun CitiesScreen(
 
     DisposableEffect(Unit) {
         val registration = FirebaseFirestore.getInstance().collection("cities")
-            .orderBy("createdAt", Query.Direction.DESCENDING)
+            .orderBy("name")
             .addSnapshotListener { snap: QuerySnapshot?, e: FirebaseFirestoreException? ->
                 if (e != null) {
                     error = e.message

@@ -23,6 +23,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import be.student.cityshare.utils.toBitmap
+import coil.compose.AsyncImage
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -32,6 +33,7 @@ fun PlaceDetailScreen(
     placesViewModel: PlacesViewModel,
     onBack: () -> Unit
 ) {
+
     val places by placesViewModel.places.collectAsState()
     val place = places.find { it.id == placeId }
 
@@ -39,7 +41,6 @@ fun PlaceDetailScreen(
 
     var rating by remember { mutableStateOf(0) }
     var comment by remember { mutableStateOf("") }
-
     var distanceMeters by remember { mutableStateOf<Double?>(null) }
     var distanceError by remember { mutableStateOf<String?>(null) }
 
@@ -53,11 +54,15 @@ fun PlaceDetailScreen(
     LaunchedEffect(place) {
         if (place == null) return@LaunchedEffect
 
-        val fine = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)
-        val coarse = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION)
+        val fine =
+            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)
+        val coarse =
+            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION)
 
-        if (fine != PackageManager.PERMISSION_GRANTED && coarse != PackageManager.PERMISSION_GRANTED) {
-            distanceError = "Locatietoestemming niet gegeven"
+        if (fine != PackageManager.PERMISSION_GRANTED &&
+            coarse != PackageManager.PERMISSION_GRANTED
+        ) {
+            distanceError = "Locatietoestemming ontbreekt"
             return@LaunchedEffect
         }
 
@@ -66,29 +71,29 @@ fun PlaceDetailScreen(
             ?: lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
 
         if (userLoc == null) {
-            distanceError = "Kan jouw locatie niet bepalen"
+            distanceError = "Locatie niet beschikbaar"
             return@LaunchedEffect
         }
 
-        val results = FloatArray(1)
+        val result = FloatArray(1)
         Location.distanceBetween(
             userLoc.latitude,
             userLoc.longitude,
             place.latitude,
             place.longitude,
-            results
+            result
         )
 
-        distanceMeters = results[0].toDouble()
+        distanceMeters = result[0].toDouble()
     }
 
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text(place?.title ?: "Detail") },
+                title = { Text(place?.title ?: "Details") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
                     }
                 }
             )
@@ -101,19 +106,22 @@ fun PlaceDetailScreen(
         }
 
         Column(
-            modifier = Modifier
-                .padding(padding)
-                .padding(16.dp)
-                .fillMaxSize()
+            Modifier.padding(padding).padding(16.dp)
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
 
             val bmp = place.imageBase64?.toBitmap()
-            if (bmp != null) {
-                Image(
+            when {
+                bmp != null -> Image(
                     bitmap = bmp.asImageBitmap(),
-                    contentDescription = place.title,
+                    contentDescription = "",
+                    modifier = Modifier.fillMaxWidth().height(250.dp),
+                    contentScale = ContentScale.Crop
+                )
+                place.imageUrl.isNotBlank() -> AsyncImage(
+                    model = place.imageUrl,
+                    contentDescription = "",
                     modifier = Modifier.fillMaxWidth().height(250.dp),
                     contentScale = ContentScale.Crop
                 )
@@ -121,12 +129,12 @@ fun PlaceDetailScreen(
 
             Text(place.category, style = MaterialTheme.typography.titleMedium)
 
-            if (!place.address.isNullOrBlank()) {
+            place.address?.let {
                 Text("Adres", color = Color.Gray)
-                Text(place.address!!)
+                Text(it)
             }
 
-            Text("Afstand tot jouw locatie", color = Color.Gray)
+            Text("Afstand", color = Color.Gray)
             when {
                 distanceError != null -> Text(distanceError!!, color = Color.Red)
                 distanceMeters == null -> Text("Berekenen…")

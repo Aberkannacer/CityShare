@@ -29,18 +29,30 @@ class PlacesViewModel : ViewModel() {
     private val _places = MutableStateFlow<List<SavedPlace>>(emptyList())
     val places: StateFlow<List<SavedPlace>> = _places
 
+    private val _categories = MutableStateFlow<List<String>>(emptyList())
+    val categories: StateFlow<List<String>> = _categories
+
     init {
         listenToPlaces()
+        listenToCategories()
     }
 
     private fun listenToPlaces() {
-        val userId = auth.currentUser?.uid ?: return
-
         db.collection("places")
-            .whereEqualTo("userId", userId)
-            .addSnapshotListener { snapshot, error ->
+            .addSnapshotListener { snap, error ->
                 if (error != null) return@addSnapshotListener
-                _places.value = snapshot?.toObjects() ?: emptyList()
+                _places.value = snap?.toObjects() ?: emptyList()
+            }
+    }
+
+    private fun listenToCategories() {
+        db.collection("categories")
+            .addSnapshotListener { snap, _ ->
+                val list = snap?.documents
+                    ?.mapNotNull { it.getString("name") }
+                    ?: emptyList()
+
+                _categories.value = list.sorted()
             }
     }
 
@@ -49,36 +61,36 @@ class PlacesViewModel : ViewModel() {
         lat: Double,
         lng: Double
     ): Triple<String?, String?, String?> {
+
         return withContext(Dispatchers.IO) {
 
             try {
-                val geocoder = Geocoder(context, Locale.getDefault())
-                val geoRes = geocoder.getFromLocation(lat, lng, 1)
+                val geo = Geocoder(context, Locale.getDefault())
+                val res = geo.getFromLocation(lat, lng, 1)
 
-                if (geoRes.isNullOrEmpty()) return@withContext Triple(null, null, null)
+                if (res.isNullOrEmpty()) return@withContext Triple(null, null, null)
 
-                val cityName = geoRes[0].locality ?: return@withContext Triple(null, null, null)
-                val country = geoRes[0].countryName ?: ""
+                val cityName = res[0].locality ?: return@withContext Triple(null, null, null)
+                val country = res[0].countryName ?: ""
 
-                val query = db.collection("cities")
+                val found = db.collection("cities")
                     .whereEqualTo("name", cityName)
                     .whereEqualTo("country", country)
                     .get()
                     .await()
 
-                if (!query.isEmpty) {
-                    val doc = query.documents.first()
+                if (!found.isEmpty) {
+                    val doc = found.documents.first()
                     return@withContext Triple(doc.id, cityName, country)
                 }
 
-                val newCityData = mapOf(
+                val newCity = mapOf(
                     "name" to cityName,
                     "country" to country
                 )
 
-                val newDoc = db.collection("cities").add(newCityData).await()
-
-                return@withContext Triple(newDoc.id, cityName, country)
+                val doc = db.collection("cities").add(newCity).await()
+                return@withContext Triple(doc.id, cityName, country)
 
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -101,13 +113,14 @@ class PlacesViewModel : ViewModel() {
 
             val id = UUID.randomUUID().toString()
 
-            val base64Image = imageUri?.let { uriToBase64(context, it) }
+            val imageBase64 = imageUri?.let { uriToBase64(context, it) }
 
             val address = withContext(Dispatchers.IO) {
                 getAddressFromLocation(context, lat, lng)
             }
 
-            val (cityId, cityName, country) = resolveOrCreateCity(context, lat, lng)
+            val (cityId, cityName, country) =
+                resolveOrCreateCity(context, lat, lng)
 
             val place = SavedPlace(
                 id = id,
@@ -116,7 +129,7 @@ class PlacesViewModel : ViewModel() {
                 latitude = lat,
                 longitude = lng,
                 category = category,
-                imageBase64 = base64Image,
+                imageBase64 = imageBase64,
                 imageUrl = "",
                 rating = 0,
                 comment = "",

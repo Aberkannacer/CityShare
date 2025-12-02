@@ -25,6 +25,7 @@ import be.student.cityshare.utils.getAddressFromLocation
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun AddPlaceScreen(
     lat: Double,
@@ -34,11 +35,12 @@ fun AddPlaceScreen(
     placesViewModel: PlacesViewModel
 ) {
     var title by remember { mutableStateOf("") }
-    var category by remember { mutableStateOf("Anders") }
-    var imageUri by remember { mutableStateOf<Uri?>(null) }
-
+    var selectedCategory by remember { mutableStateOf<String?>(null) }
     var address by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(true) }
+    var imageUri by remember { mutableStateOf<Uri?>(null) }
+
+    val categories by placesViewModel.categories.collectAsState()
 
     val context = LocalContext.current
 
@@ -50,32 +52,42 @@ fun AddPlaceScreen(
         loading = false
     }
 
-    val pickImageLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri -> imageUri = uri }
+    val pickImage = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { picked ->
+        imageUri = picked
+    }
 
     Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp)
+        Modifier
+            .fillMaxSize()
+            .padding(16.dp)
     ) {
-        Box(modifier = Modifier.fillMaxWidth()) {
-            IconButton(onClick = onCancel, modifier = Modifier.align(Alignment.CenterStart)) {
+
+        Box(Modifier.fillMaxWidth()) {
+            IconButton(
+                onClick = onCancel,
+                modifier = Modifier.align(Alignment.CenterStart)
+            ) {
                 Icon(Icons.Default.ArrowBack, contentDescription = "Terug")
             }
             Text("Nieuwe locatie opslaan", modifier = Modifier.align(Alignment.Center))
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(Modifier.height(16.dp))
 
         Column(
-            modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()),
+            Modifier
+                .weight(1f)
+                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
 
             Text("Adres", color = Color.Gray)
             when {
-                loading -> Text("Adres laden...")
+                loading -> Text("Adres laden…")
                 address != null -> Text(address!!)
-                else -> Text("Adres niet gevonden", color = Color.Red)
+                else -> Text("Geen adres gevonden", color = Color.Red)
             }
 
             TextField(
@@ -86,20 +98,30 @@ fun AddPlaceScreen(
             )
 
             Text("Categorie")
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("Eten", "Winkel", "Bezienswaardigheid", "Werk", "Anders").forEach { cat ->
-                    Text(
-                        text = cat,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(if (category == cat) Color.LightGray else Color.Transparent)
-                            .clickable { category = cat }
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                    )
+            if (categories.isEmpty()) {
+                Text("Geen categorieën in Firebase", color = Color.Red)
+            } else {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    categories.forEach { cat ->
+                        Text(
+                            text = cat,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(
+                                    if (selectedCategory == cat)
+                                        Color.LightGray
+                                    else Color.Transparent
+                                )
+                                .clickable { selectedCategory = cat }
+                                .padding(horizontal = 12.dp, vertical = 6.dp)
+                        )
+                    }
                 }
             }
 
-            Button(onClick = { pickImageLauncher.launch("image/*") }) {
+            Button(onClick = { pickImage.launch("image/*") }) {
                 Text("Kies foto")
             }
 
@@ -107,27 +129,36 @@ fun AddPlaceScreen(
                 AsyncImage(
                     model = ImageRequest.Builder(context).data(uri).build(),
                     contentDescription = "Foto",
-                    modifier = Modifier.fillMaxWidth().height(200.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp)
                 )
             }
         }
 
         Row(
-            modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            Modifier
+                .fillMaxWidth()
+                .padding(top = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Button(onClick = onCancel, modifier = Modifier.weight(1f)) {
+
+            Button(
+                onClick = onCancel,
+                modifier = Modifier.weight(1f)
+            ) {
                 Text("Annuleer")
             }
+
             Button(
-                enabled = title.isNotBlank(),
+                enabled = title.isNotBlank() && selectedCategory != null,
                 onClick = {
                     placesViewModel.savePlace(
                         context = context,
                         title = title,
                         lat = lat,
                         lng = lng,
-                        category = category,
+                        category = selectedCategory!!,
                         imageUri = imageUri
                     )
                     onSaved()
