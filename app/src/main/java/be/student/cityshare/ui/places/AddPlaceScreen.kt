@@ -11,11 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material3.Button
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -25,6 +21,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import be.student.cityshare.utils.getAddressFromLocation
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @Composable
 fun AddPlaceScreen(
@@ -38,18 +37,25 @@ fun AddPlaceScreen(
     var category by remember { mutableStateOf("Anders") }
     var imageUri by remember { mutableStateOf<Uri?>(null) }
 
+    var address by remember { mutableStateOf<String?>(null) }
+    var loading by remember { mutableStateOf(true) }
+
     val context = LocalContext.current
+
+    LaunchedEffect(Unit) {
+        loading = true
+        address = withContext(Dispatchers.IO) {
+            getAddressFromLocation(context, lat, lng)
+        }
+        loading = false
+    }
 
     val pickImageLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
-    ) { uri ->
-        imageUri = uri
-    }
+    ) { uri -> imageUri = uri }
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
+        modifier = Modifier.fillMaxSize().padding(16.dp)
     ) {
         Box(modifier = Modifier.fillMaxWidth()) {
             IconButton(onClick = onCancel, modifier = Modifier.align(Alignment.CenterStart)) {
@@ -61,13 +67,16 @@ fun AddPlaceScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         Column(
-            modifier = Modifier
-                .weight(1f)
-                .verticalScroll(rememberScrollState()),
+            modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text(text = "Lat: $lat")
-            Text(text = "Lng: $lng")
+
+            Text("Adres", color = Color.Gray)
+            when {
+                loading -> Text("Adres laden...")
+                address != null -> Text(address!!)
+                else -> Text("Adres niet gevonden", color = Color.Red)
+            }
 
             TextField(
                 value = title,
@@ -76,58 +85,42 @@ fun AddPlaceScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Text(text = "Categorie")
-
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                val categories = listOf("Eten", "Winkel", "Bezienswaardigheid", "Werk", "Anders")
-                categories.forEach { cat ->
+            Text("Categorie")
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf("Eten", "Winkel", "Bezienswaardigheid", "Werk", "Anders").forEach { cat ->
                     Text(
                         text = cat,
                         modifier = Modifier
                             .clip(RoundedCornerShape(16.dp))
-                            .background(
-                                if (category == cat) Color.LightGray else Color.Transparent
-                            )
+                            .background(if (category == cat) Color.LightGray else Color.Transparent)
                             .clickable { category = cat }
                             .padding(horizontal = 8.dp, vertical = 4.dp)
                     )
                 }
             }
 
-            Button(
-                onClick = { pickImageLauncher.launch("image/*") }
-            ) {
-                Text(text = "Kies foto")
+            Button(onClick = { pickImageLauncher.launch("image/*") }) {
+                Text("Kies foto")
             }
 
             imageUri?.let { uri ->
                 AsyncImage(
-                    model = ImageRequest.Builder(context)
-                        .data(uri)
-                        .build(),
-                    contentDescription = "Gekozen foto",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp)
+                    model = ImageRequest.Builder(context).data(uri).build(),
+                    contentDescription = "Foto",
+                    modifier = Modifier.fillMaxWidth().height(200.dp)
                 )
             }
         }
 
         Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Button(
-                onClick = onCancel,
-                modifier = Modifier.weight(1f)
-            ) {
-                Text(text = "Annuleer")
+            Button(onClick = onCancel, modifier = Modifier.weight(1f)) {
+                Text("Annuleer")
             }
             Button(
+                enabled = title.isNotBlank(),
                 onClick = {
                     placesViewModel.savePlace(
                         context = context,
@@ -139,10 +132,9 @@ fun AddPlaceScreen(
                     )
                     onSaved()
                 },
-                enabled = title.isNotBlank(),
                 modifier = Modifier.weight(1f)
             ) {
-                Text(text = "Opslaan")
+                Text("Opslaan")
             }
         }
     }
