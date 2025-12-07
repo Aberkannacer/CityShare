@@ -18,7 +18,8 @@ class MessagingViewModel : ViewModel() {
 
     private val db = Firebase.firestore
     private val auth = Firebase.auth
-    private val currentUserId = auth.currentUser?.uid
+    private val currentUserId: String?
+        get() = auth.currentUser?.uid
 
     // Lijst met gebruikers voor het UserListScreen
     private val _users = MutableStateFlow<List<User>>(emptyList())
@@ -40,7 +41,9 @@ class MessagingViewModel : ViewModel() {
     private var messagesListener: ListenerRegistration? = null
 
     init {
-        if (currentUserId != null) {
+        fetchAllUsers()
+        listenForAllUnreadMessages()
+        auth.addAuthStateListener {
             fetchAllUsers()
             listenForAllUnreadMessages()
         }
@@ -48,9 +51,17 @@ class MessagingViewModel : ViewModel() {
 
     private fun fetchAllUsers() {
         db.collection("users").get().addOnSuccessListener { result ->
-            val userList = result.toObjects(User::class.java)
-            _users.value = userList.filter { it.uid != currentUserId }
-            _userMap.value = userList.associateBy({ it.uid }, { it.displayName })
+            val allUsers = result.toObjects(User::class.java)
+            val myId = currentUserId
+            _users.value = if (myId != null) {
+                allUsers.filter { it.uid != myId }
+            } else {
+                allUsers
+            }
+            _userMap.value = allUsers.associateBy(
+                { it.uid },
+                { user -> user.displayName.ifBlank { user.email.ifBlank { user.uid } } }
+            )
         }
     }
 
@@ -76,10 +87,11 @@ class MessagingViewModel : ViewModel() {
     }
 
     fun sendMessage(receiverId: String, text: String) {
-        if (currentUserId == null || text.isBlank()) return
-        val conversationId = listOf(currentUserId, receiverId).sorted().joinToString("_")
+        val senderId = currentUserId ?: return
+        if (text.isBlank()) return
+        val conversationId = listOf(senderId, receiverId).sorted().joinToString("_")
         val message = Message(
-            senderId = currentUserId,
+            senderId = senderId,
             receiverId = receiverId,
             text = text,
             isRead = false

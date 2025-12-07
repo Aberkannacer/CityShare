@@ -52,10 +52,12 @@ fun ChatScreen(
         messagingViewModel.markMessagesAsRead(conversationId)
     }
 
+    val receiverName = userMap[receiverId] ?: receiverEmail
+
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text(receiverEmail) },
+                title = { Text(receiverName) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Terug")

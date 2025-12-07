@@ -65,7 +65,11 @@ private fun UserListItem(user: User, onClick: () -> Unit) {
             .clickable(onClick = onClick)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(text = user.displayName)
+            val name = user.displayName.ifBlank { user.email.ifBlank { user.uid } }
+            Text(text = name)
+            if (user.email.isNotBlank()) {
+                Text(text = user.email, style = androidx.compose.material3.MaterialTheme.typography.bodySmall)
+            }
         }
     }
 }
