@@ -24,6 +24,8 @@ import be.student.cityshare.ui.places.PlaceDetailScreen
 import be.student.cityshare.ui.places.PlacesListScreen
 import be.student.cityshare.ui.places.PlacesViewModel
 import be.student.cityshare.ui.profile.ProfileScreen
+import be.student.cityshare.ui.trips.AddTripScreen
+import be.student.cityshare.ui.trips.TripsViewModel
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
 import java.net.URLEncoder
@@ -33,6 +35,7 @@ import java.net.URLDecoder
 fun CityShareApp() {
     val navController = rememberNavController()
     val placesViewModel: PlacesViewModel = viewModel()
+    val tripsViewModel: TripsViewModel = viewModel()
     val messagingViewModel: MessagingViewModel = viewModel()
 
     val hasUnreadMessages by messagingViewModel.hasUnreadMessages.collectAsState()
@@ -70,6 +73,7 @@ fun CityShareApp() {
                 onNavigateToMap = { navController.navigate("map") },
                 onNavigateToPlaces = { navController.navigate("places") },
                 onNavigateToCities = { navController.navigate("cities") },
+                onNavigateToAddTrip = { navController.navigate("add_trip") },
                 onNavigateToProfile = { navController.navigate("profile") },
                 onNavigateToMessaging = { navController.navigate("user_list") },
                 hasUnreadMessages = hasUnreadMessages
@@ -206,6 +210,14 @@ fun CityShareApp() {
             AddCityScreen(
                 onSaved = { navController.popBackStack() },
                 onCancel = { navController.popBackStack() }
+            )
+        }
+
+        composable("add_trip") {
+            AddTripScreen(
+                onBack = { navController.popBackStack() },
+                onSaved = { navController.popBackStack() },
+                tripsViewModel = tripsViewModel
             )
         }
     }

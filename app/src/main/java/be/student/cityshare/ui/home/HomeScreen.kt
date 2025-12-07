@@ -18,6 +18,7 @@ import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.automirrored.filled.Message
 import androidx.compose.material.icons.filled.LocationCity
 import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.FlightTakeoff
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -41,6 +42,7 @@ fun HomeScreen(
     onNavigateToMap: () -> Unit,
     onNavigateToPlaces: () -> Unit,
     onNavigateToCities: () -> Unit,
+    onNavigateToAddTrip: () -> Unit,
     onNavigateToProfile: () -> Unit,
     onNavigateToMessaging: () -> Unit,
     hasUnreadMessages: Boolean
@@ -61,6 +63,11 @@ fun HomeScreen(
                 title = "Wereldkaart",
                 icon = Icons.Default.Map,
                 onClick = onNavigateToMap
+            )
+            HomeCard(
+                title = "Trip toevoegen",
+                icon = Icons.Default.FlightTakeoff,
+                onClick = onNavigateToAddTrip
             )
             HomeCard(
                 title = "Mijn Plaatsen",
