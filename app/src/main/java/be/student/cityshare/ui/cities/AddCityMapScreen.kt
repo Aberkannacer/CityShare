@@ -74,25 +74,9 @@ fun AddCityMapScreen(
         MapView(context).apply {
             setTileSource(TileSourceFactory.MAPNIK)
             setMultiTouchControls(true)
-            controller.setZoom(5.5)
-            controller.setCenter(GeoPoint(50.85, 4.35))
+            controller.setZoom(12.0)
+            controller.setCenter(GeoPoint(51.2194, 4.4025)) // Antwerpen als startpositie
             zoomController.setVisibility(CustomZoomButtonsController.Visibility.SHOW_AND_FADEOUT)
-
-            if (
-                ContextCompat.checkSelfPermission(
-                    context,
-                    Manifest.permission.ACCESS_FINE_LOCATION
-                ) == PackageManager.PERMISSION_GRANTED
-            ) {
-                val fusedClient = LocationServices.getFusedLocationProviderClient(context)
-                fusedClient.lastLocation.addOnSuccessListener { location ->
-                    if (location != null) {
-                        val point = GeoPoint(location.latitude, location.longitude)
-                        controller.setZoom(10.0)
-                        controller.animateTo(point)
-                    }
-                }
-            }
         }
     }
 
