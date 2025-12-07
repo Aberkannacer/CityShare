@@ -8,12 +8,15 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.clickable
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -21,6 +24,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.FlightTakeoff
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -65,6 +70,8 @@ fun AddTripScreen(
     var selectedCategory by remember { mutableStateOf<String?>(null) }
     var address by remember { mutableStateOf("") }
     var notes by remember { mutableStateOf("") }
+    var rating by remember { mutableStateOf(0) }
+    var comment by remember { mutableStateOf("") }
     var imageUri by remember { mutableStateOf<Uri?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
 
@@ -163,6 +170,32 @@ fun AddTripScreen(
                         label = { Text("Omschrijving (optioneel)") },
                         minLines = 3
                     )
+
+                    Text(
+                        text = "Rating",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        (1..5).forEach { i ->
+                            Icon(
+                                imageVector = if (i <= rating) Icons.Default.Star else Icons.Default.StarBorder,
+                                contentDescription = "Ster $i",
+                                tint = if (i <= rating) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clickable { rating = i }
+                            )
+                        }
+                    }
+
+                    OutlinedTextField(
+                        value = comment,
+                        onValueChange = { comment = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Comment") },
+                        minLines = 2
+                    )
                 }
             }
 
@@ -249,6 +282,8 @@ fun AddTripScreen(
                         category = selectedCategory,
                         address = address,
                         notes = notes,
+                        rating = rating,
+                        comment = comment,
                         imageUri = imageUri,
                         onSuccess = onSaved,
                         onError = { error = it }

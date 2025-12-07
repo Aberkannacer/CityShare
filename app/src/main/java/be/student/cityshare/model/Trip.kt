@@ -8,5 +8,7 @@ data class Trip(
     val category: String = "",
     val address: String = "",
     val notes: String = "",
-    val imageBase64: String? = null
+    val imageBase64: String? = null,
+    val rating: Int = 0,
+    val comment: String = ""
 )

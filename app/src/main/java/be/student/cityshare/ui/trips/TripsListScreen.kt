@@ -90,13 +90,23 @@ private fun TripListItem(trip: Trip) {
                 Text(trip.notes, style = MaterialTheme.typography.bodyMedium)
             }
 
-            // Placeholder stars to align with existing UI; no ratings stored on trips yet.
-            Row {
-                (1..5).forEach { starIndex ->
-                    Icon(
-                        imageVector = Icons.Default.StarBorder,
-                        contentDescription = "Rating",
-                        tint = Color.Gray
+            if (trip.rating > 0 || trip.comment.isNotBlank()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row {
+                    (1..5).forEach { starIndex ->
+                        Icon(
+                            imageVector = if (starIndex <= trip.rating) Icons.Default.Star else Icons.Default.StarBorder,
+                            contentDescription = "Rating",
+                            tint = if (starIndex <= trip.rating) Color(0xFFFFC107) else Color.Gray
+                        )
+                    }
+                }
+                if (trip.comment.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = trip.comment,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }

@@ -57,7 +57,9 @@ class TripsViewModel : ViewModel() {
                         category = doc.getString("category") ?: "",
                         address = doc.getString("address") ?: "",
                         notes = doc.getString("notes") ?: "",
-                        imageBase64 = doc.getString("imageBase64")
+                        imageBase64 = doc.getString("imageBase64"),
+                        rating = (doc.getLong("rating") ?: 0L).toInt(),
+                        comment = doc.getString("comment") ?: ""
                     )
                 } ?: emptyList()
             }
@@ -97,6 +99,8 @@ class TripsViewModel : ViewModel() {
         address: String,
         notes: String,
         imageUri: Uri?,
+        rating: Int,
+        comment: String,
         onSuccess: () -> Unit,
         onError: (String) -> Unit
     ) {
@@ -121,30 +125,34 @@ class TripsViewModel : ViewModel() {
             _saving.value = true
             try {
                 val id = UUID.randomUUID().toString()
-                val imageBase64 = imageUri?.let { uriToBase64(context, it) }
+        val imageBase64 = imageUri?.let { uriToBase64(context, it) }
 
-                val trip = Trip(
-                    id = id,
-                    userId = userId,
-                    cityId = city.id,
-                    cityName = city.name,
-                    category = category,
-                    address = address.trim(),
-                    notes = notes.trim(),
-                    imageBase64 = imageBase64
-                )
+        val trip = Trip(
+            id = id,
+            userId = userId,
+            cityId = city.id,
+            cityName = city.name,
+            category = category,
+            address = address.trim(),
+            notes = notes.trim(),
+            imageBase64 = imageBase64,
+            rating = rating,
+            comment = comment.trim()
+        )
 
-                val data = mapOf(
-                    "id" to trip.id,
-                    "userId" to trip.userId,
-                    "cityId" to trip.cityId,
-                    "cityName" to trip.cityName,
-                    "category" to trip.category,
-                    "address" to trip.address,
-                    "notes" to trip.notes,
-                    "imageBase64" to trip.imageBase64,
-                    "createdAt" to FieldValue.serverTimestamp()
-                )
+        val data = mapOf(
+            "id" to trip.id,
+            "userId" to trip.userId,
+            "cityId" to trip.cityId,
+            "cityName" to trip.cityName,
+            "category" to trip.category,
+            "address" to trip.address,
+            "notes" to trip.notes,
+            "imageBase64" to trip.imageBase64,
+            "rating" to trip.rating,
+            "comment" to trip.comment,
+            "createdAt" to FieldValue.serverTimestamp()
+        )
 
                 db.collection("trips")
                     .document(id)
