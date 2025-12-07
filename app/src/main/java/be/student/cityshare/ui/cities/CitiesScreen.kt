@@ -15,6 +15,8 @@ import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.QuerySnapshot
 import com.google.firebase.firestore.FirebaseFirestoreException
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.auth.ktx.auth
+import com.google.firebase.ktx.Firebase
 
 data class City(
     val id: String = "",
@@ -32,27 +34,33 @@ fun CitiesScreen(
 ) {
     var cities by remember { mutableStateOf(listOf<City>()) }
     var error by remember { mutableStateOf<String?>(null) }
+    val userId = Firebase.auth.currentUser?.uid
 
-    DisposableEffect(Unit) {
-        val registration = FirebaseFirestore.getInstance().collection("cities")
-            .orderBy("name")
-            .addSnapshotListener { snap: QuerySnapshot?, e: FirebaseFirestoreException? ->
-                if (e != null) {
-                    error = e.message
-                    return@addSnapshotListener
+    DisposableEffect(userId) {
+        if (userId == null) {
+            cities = emptyList()
+            onDispose { }
+        } else {
+            val registration = FirebaseFirestore.getInstance().collection("cities")
+                .whereEqualTo("createdBy", userId)
+                .addSnapshotListener { snap: QuerySnapshot?, e: FirebaseFirestoreException? ->
+                    if (e != null) {
+                        error = e.message
+                        return@addSnapshotListener
+                    }
+                    val items = snap?.documents?.map { doc ->
+                        City(
+                            id = doc.id,
+                            name = doc.getString("name") ?: "",
+                            country = doc.getString("country") ?: "",
+                            description = doc.getString("description") ?: ""
+                        )
+                    }?.sortedBy { it.name.lowercase() } ?: emptyList()
+                    cities = items
                 }
-                val items = snap?.documents?.map { doc ->
-                    City(
-                        id = doc.id,
-                        name = doc.getString("name") ?: "",
-                        country = doc.getString("country") ?: "",
-                        description = doc.getString("description") ?: ""
-                    )
-                } ?: emptyList()
-                cities = items
-            }
 
-        onDispose { registration.remove() }
+            onDispose { registration.remove() }
+        }
     }
 
     Scaffold(

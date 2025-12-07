@@ -42,6 +42,8 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import com.google.android.gms.location.LocationServices
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.auth.ktx.auth
+import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -254,7 +256,8 @@ fun AddCityMapScreen(
                                 "country" to country,
                                 "description" to "",
                                 "latitude" to point.latitude,
-                                "longitude" to point.longitude
+                                "longitude" to point.longitude,
+                                "createdBy" to Firebase.auth.currentUser?.uid
                             )
 
                             try {

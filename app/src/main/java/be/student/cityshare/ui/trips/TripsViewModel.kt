@@ -8,6 +8,7 @@ import be.student.cityshare.model.Trip
 import be.student.cityshare.utils.uriToBase64
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.firestore.ktx.toObjects
 import com.google.firebase.ktx.Firebase
@@ -42,15 +43,25 @@ class TripsViewModel : ViewModel() {
     private val _userMap = MutableStateFlow<Map<String, String>>(emptyMap())
     val userMap: StateFlow<Map<String, String>> = _userMap
 
+    private var tripsListener: ListenerRegistration? = null
+
     init {
         listenToCities()
         listenToCategories()
-        listenToTrips()
+        listenToTripsForUser(auth.currentUser?.uid)
+        auth.addAuthStateListener { listenToTripsForUser(it.currentUser?.uid) }
         loadUsers()
     }
 
-    private fun listenToTrips() {
-        db.collection("trips")
+    private fun listenToTripsForUser(userId: String?) {
+        tripsListener?.remove()
+        if (userId == null) {
+            _trips.value = emptyList()
+            return
+        }
+
+        tripsListener = db.collection("trips")
+            .whereEqualTo("userId", userId)
             .addSnapshotListener { snap, _ ->
                 _trips.value = snap?.documents?.mapNotNull { doc ->
                     Trip(
