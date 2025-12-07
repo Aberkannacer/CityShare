@@ -49,7 +49,7 @@ fun ChatScreen(
 
     LaunchedEffect(conversationId) {
         messagingViewModel.loadMessages(conversationId)
-        messagingViewModel.markMessagesAsRead(conversationId)
+        messagingViewModel.markMessagesAsRead(conversationId, receiverId)
     }
 
     val receiverName = userMap[receiverId] ?: receiverEmail

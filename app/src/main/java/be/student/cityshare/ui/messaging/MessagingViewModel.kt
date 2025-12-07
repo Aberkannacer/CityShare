@@ -37,6 +37,10 @@ class MessagingViewModel : ViewModel() {
     private val _hasUnreadMessages = MutableStateFlow(false)
     val hasUnreadMessages: StateFlow<Boolean> = _hasUnreadMessages.asStateFlow()
 
+    // Set van afzender-ids met ongelezen berichten (voor rode badges in lijst)
+    private val _unreadFrom = MutableStateFlow<Set<String>>(emptySet())
+    val unreadFrom: StateFlow<Set<String>> = _unreadFrom.asStateFlow()
+
     private var unreadListener: ListenerRegistration? = null
     private var messagesListener: ListenerRegistration? = null
 
@@ -44,9 +48,18 @@ class MessagingViewModel : ViewModel() {
         fetchAllUsers()
         listenForAllUnreadMessages()
         auth.addAuthStateListener {
+            resetState()
             fetchAllUsers()
             listenForAllUnreadMessages()
         }
+    }
+
+    private fun resetState() {
+        unreadListener?.remove()
+        messagesListener?.remove()
+        _messages.value = emptyList()
+        _unreadFrom.value = emptySet()
+        _hasUnreadMessages.value = false
     }
 
     private fun fetchAllUsers() {
@@ -70,9 +83,11 @@ class MessagingViewModel : ViewModel() {
         unreadListener?.remove()
         unreadListener = db.collectionGroup("messages")
             .whereEqualTo("receiverId", currentUserId)
-            .whereEqualTo("isRead", false)
             .addSnapshotListener { snapshot, _ ->
-                _hasUnreadMessages.value = !(snapshot?.isEmpty ?: true)
+                val docs = snapshot?.documents.orEmpty()
+                val unreadDocs = docs.filter { doc -> doc.getBoolean("isRead") != true }
+                _hasUnreadMessages.value = unreadDocs.isNotEmpty()
+                _unreadFrom.value = unreadDocs.mapNotNull { it.getString("senderId") }.toSet()
             }
     }
 
@@ -100,7 +115,7 @@ class MessagingViewModel : ViewModel() {
             .collection("messages").add(message)
     }
 
-    fun markMessagesAsRead(conversationId: String) {
+    fun markMessagesAsRead(conversationId: String, otherUserId: String) {
         if (currentUserId == null) return
         viewModelScope.launch {
             val query = db.collection("conversations").document(conversationId)
@@ -111,6 +126,11 @@ class MessagingViewModel : ViewModel() {
                 snapshot.documents.forEach { doc ->
                     doc.reference.update("isRead", true)
                 }
+                // lokaal badge leegmaken voor deze afzender
+                val current = _unreadFrom.value.toMutableSet()
+                current.remove(otherUserId)
+                _unreadFrom.value = current
+                _hasUnreadMessages.value = current.isNotEmpty()
             }
         }
     }
