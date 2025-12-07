@@ -290,8 +290,10 @@ fun OsmdroidWorldMapScreen(
                     singleLine = true,
                     keyboardActions = KeyboardActions(
                         onDone = {
-                            moveToFirstResult(filteredTrips, mapView)
-                            keyboardController?.hide()
+                            scope.launch {
+                                moveToFirstResult(filteredTrips, mapView, context, cityQuery)
+                                keyboardController?.hide()
+                            }
                         }
                     ),
                     keyboardOptions = KeyboardOptions.Default.copy(
@@ -301,8 +303,10 @@ fun OsmdroidWorldMapScreen(
                 Spacer(modifier = Modifier.height(8.dp))
                 Button(
                     onClick = {
-                        moveToFirstResult(filteredTrips, mapView)
-                        keyboardController?.hide()
+                        scope.launch {
+                            moveToFirstResult(filteredTrips, mapView, context, cityQuery)
+                            keyboardController?.hide()
+                        }
                     },
                     modifier = Modifier.align(Alignment.End)
                 ) {
@@ -470,14 +474,38 @@ private data class TripPin(
     val lng: Double
 )
 
-private fun moveToFirstResult(trips: List<Trip>, mapView: MapView) {
-    val target = trips.firstOrNull { it.latitude != 0.0 || it.longitude != 0.0 }
-        ?: trips.firstOrNull()
-        ?: return
+private suspend fun moveToFirstResult(
+    trips: List<Trip>,
+    mapView: MapView,
+    context: android.content.Context,
+    fallbackQuery: String
+) {
+    val geo = Geocoder(context, java.util.Locale.getDefault())
+    var targetLatLng: Pair<Double, Double>? = trips
+        .firstOrNull { it.latitude != 0.0 || it.longitude != 0.0 }
+        ?.let { it.latitude to it.longitude }
 
-    val lat = if (target.latitude == 0.0) 51.2194 else target.latitude
-    val lng = if (target.longitude == 0.0) 4.4025 else target.longitude
+    if (targetLatLng == null) {
+        val first = trips.firstOrNull()
+        val query = when {
+            first?.address?.isNotBlank() == true -> first.address
+            first?.cityName?.isNotBlank() == true -> first.cityName
+            fallbackQuery.isNotBlank() -> fallbackQuery
+            else -> null
+        }
+        if (query != null) {
+            try {
+                val res = withContext(Dispatchers.IO) { geo.getFromLocationName(query, 1) }
+                val loc = res?.firstOrNull()
+                if (loc != null) {
+                    targetLatLng = loc.latitude to loc.longitude
+                }
+            } catch (_: Exception) {
+            }
+        }
+    }
 
+    val (lat, lng) = targetLatLng ?: 51.2194 to 4.4025
     mapView.controller.setZoom(13.0)
     mapView.controller.animateTo(GeoPoint(lat, lng))
 }
