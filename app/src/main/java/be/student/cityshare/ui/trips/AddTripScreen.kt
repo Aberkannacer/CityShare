@@ -60,7 +60,9 @@ import coil.compose.AsyncImage
 fun AddTripScreen(
     onBack: () -> Unit,
     onSaved: () -> Unit,
-    tripsViewModel: TripsViewModel
+    tripsViewModel: TripsViewModel,
+    prefillCity: String? = null,
+    prefillAddress: String? = null
 ){
     val cities by tripsViewModel.cities.collectAsState()
     val categories by tripsViewModel.categories.collectAsState()
@@ -68,7 +70,8 @@ fun AddTripScreen(
 
     var selectedCity by remember { mutableStateOf<CityOption?>(null) }
     var selectedCategory by remember { mutableStateOf<String?>(null) }
-    var address by remember { mutableStateOf("Ellermanstraat 33, 2060 Antwerpen") }
+    var address by remember { mutableStateOf(prefillAddress ?: "Ellermanstraat 33, 2060 Antwerpen") }
+    val manualCityName = remember(prefillCity) { prefillCity?.takeIf { it.isNotBlank() } }
     var notes by remember { mutableStateOf("") }
     var rating by remember { mutableStateOf(0) }
     var comment by remember { mutableStateOf("") }
@@ -85,6 +88,12 @@ fun AddTripScreen(
     ) { uri -> imageUri = uri }
 
     LaunchedEffect(cities) {
+        if (prefillCity != null) {
+            val match = cities.firstOrNull { it.name.equals(prefillCity, ignoreCase = true) }
+            if (match != null) {
+                selectedCity = match
+            }
+        }
         if (selectedCity == null && cities.isNotEmpty()) {
             selectedCity = cities.first()
         }
@@ -132,7 +141,7 @@ fun AddTripScreen(
                         options = cities.map { "${it.name} ${if (it.country.isNotBlank()) "(${it.country})" else ""}".trim() },
                         expanded = cityMenuExpanded,
                         selectedLabel = selectedCity?.let { "${it.name}${if (it.country.isNotBlank()) " - ${it.country}" else ""}" }
-                            ?: "Selecteer",
+                            ?: (manualCityName ?: "Selecteer"),
                         onExpandChange = { cityMenuExpanded = it },
                         onSelect = { index ->
                             cityMenuExpanded = false
@@ -285,6 +294,7 @@ fun AddTripScreen(
                         rating = rating,
                         comment = comment,
                         imageUri = imageUri,
+                        cityNameOverride = manualCityName,
                         onSuccess = onSaved,
                         onError = { error = it }
                     )

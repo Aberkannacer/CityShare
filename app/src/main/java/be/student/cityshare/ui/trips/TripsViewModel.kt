@@ -53,20 +53,15 @@ class TripsViewModel : ViewModel() {
     init {
         listenToCities()
         listenToCategories()
-        listenToTripsForUser(auth.currentUser?.uid)
-        auth.addAuthStateListener { listenToTripsForUser(it.currentUser?.uid) }
+        listenToTrips()
+        auth.addAuthStateListener { listenToTrips() }
         loadUsers()
     }
 
-    private fun listenToTripsForUser(userId: String?) {
+    private fun listenToTrips() {
         tripsListener?.remove()
-        if (userId == null) {
-            _trips.value = emptyList()
-            return
-        }
 
         tripsListener = db.collection("trips")
-            .whereEqualTo("userId", userId)
             .addSnapshotListener { snap, _ ->
                 _trips.value = snap?.documents?.mapNotNull { doc ->
                     Trip(
@@ -74,6 +69,8 @@ class TripsViewModel : ViewModel() {
                         userId = doc.getString("userId") ?: "",
                         cityId = doc.getString("cityId") ?: "",
                         cityName = doc.getString("cityName") ?: "",
+                        latitude = doc.getDouble("latitude") ?: 0.0,
+                        longitude = doc.getDouble("longitude") ?: 0.0,
                         category = doc.getString("category") ?: "",
                         address = doc.getString("address") ?: "",
                         notes = doc.getString("notes") ?: "",
@@ -195,6 +192,7 @@ class TripsViewModel : ViewModel() {
         imageUri: Uri?,
         rating: Int,
         comment: String,
+        cityNameOverride: String? = null,
         onSuccess: () -> Unit,
         onError: (String) -> Unit
     ) {
@@ -205,7 +203,7 @@ class TripsViewModel : ViewModel() {
             return
         }
 
-        if (city == null) {
+        if (city == null && cityNameOverride.isNullOrBlank()) {
             onError("Kies eerst een stad.")
             return
         }
@@ -219,18 +217,25 @@ class TripsViewModel : ViewModel() {
             _saving.value = true
             try {
                 val id = UUID.randomUUID().toString()
-        val imageBase64 = imageUri?.let { uriToBase64(context, it) }
+                val imageBase64 = imageUri?.let { uriToBase64(context, it) }
 
-        val trip = Trip(
-            id = id,
-            userId = userId,
-            cityId = city.id,
-            cityName = city.name,
-            category = category,
-            address = address.trim(),
-            notes = notes.trim(),
-            imageBase64 = imageBase64,
-            rating = rating,
+                val (geoLat, geoLng, geoCity, geoCountry) = geocodeAddress(context, address)
+
+                val finalCity = city
+                    ?: createCityIfMissing(cityNameOverride!!, userId, geoCountry ?: "")
+
+                val trip = Trip(
+                    id = id,
+                    userId = userId,
+                    cityId = finalCity?.id ?: "",
+                    cityName = finalCity?.name ?: geoCity ?: cityNameOverride ?: "",
+                    latitude = geoLat ?: 0.0,
+                    longitude = geoLng ?: 0.0,
+                    category = category,
+                    address = address.trim(),
+                    notes = notes.trim(),
+                    imageBase64 = imageBase64,
+                    rating = rating,
             comment = comment.trim()
         )
 
@@ -261,4 +266,52 @@ class TripsViewModel : ViewModel() {
             }
         }
     }
+
+    private suspend fun createCityIfMissing(name: String, userId: String, country: String = ""): CityOption? {
+        return try {
+            val existing = db.collection("cities")
+                .whereEqualTo("name", name)
+                .whereEqualTo("country", country)
+                .whereEqualTo("createdBy", userId)
+                .get()
+                .await()
+
+            if (!existing.isEmpty) {
+                val doc = existing.documents.first()
+                CityOption(doc.id, name, doc.getString("country") ?: country)
+            } else {
+                val data = mapOf(
+                    "name" to name,
+                    "searchName" to name.lowercase(),
+                    "country" to country,
+                    "description" to "",
+                    "createdBy" to userId
+                )
+                val doc = db.collection("cities").add(data).await()
+                CityOption(doc.id, name, country)
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    suspend fun ensureCityExists(name: String, country: String): CityOption? {
+        val userId = auth.currentUser?.uid ?: return null
+        return createCityIfMissing(name, userId, country)
+    }
+
+    private suspend fun geocodeAddress(context: Context, addr: String): Quadruple<Double?, Double?, String?, String?> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val geo = android.location.Geocoder(context, Locale.getDefault())
+                val res = geo.getFromLocationName(addr, 1)
+                val loc = res?.firstOrNull()
+                Quadruple(loc?.latitude, loc?.longitude, loc?.locality ?: loc?.subAdminArea, loc?.countryName)
+            } catch (_: Exception) {
+                Quadruple(null, null, null, null)
+            }
+        }
+    }
 }
+
+data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)

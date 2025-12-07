@@ -29,10 +29,10 @@ import be.student.cityshare.ui.trips.AddTripScreen
 import be.student.cityshare.ui.trips.TripsViewModel
 import be.student.cityshare.ui.trips.TripsListScreen
 import be.student.cityshare.ui.trips.TripDetailScreen
-import com.google.firebase.auth.ktx.auth
-import com.google.firebase.ktx.Firebase
 import java.net.URLEncoder
 import java.net.URLDecoder
+import com.google.firebase.auth.ktx.auth
+import com.google.firebase.ktx.Firebase
 
 @Composable
 fun CityShareApp() {
@@ -139,6 +139,25 @@ fun CityShareApp() {
                 navController = navController,
                 placesViewModel = placesViewModel,
                 tripsViewModel = tripsViewModel
+            )
+        }
+        composable(
+            route = "add_trip_prefill/{city}/{address}",
+            arguments = listOf(
+                navArgument("city") { type = NavType.StringType },
+                navArgument("address") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val cityArg = backStackEntry.arguments?.getString("city") ?: ""
+            val addressArg = backStackEntry.arguments?.getString("address") ?: ""
+            val cityName = URLDecoder.decode(cityArg, "UTF-8")
+            val address = URLDecoder.decode(addressArg, "UTF-8")
+            AddTripScreen(
+                onBack = { navController.popBackStack() },
+                onSaved = { navController.popBackStack() },
+                tripsViewModel = tripsViewModel,
+                prefillCity = cityName,
+                prefillAddress = address
             )
         }
 

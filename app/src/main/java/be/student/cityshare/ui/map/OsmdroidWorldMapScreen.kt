@@ -41,6 +41,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
@@ -55,6 +56,7 @@ import be.student.cityshare.model.TripReview
 import be.student.cityshare.ui.places.PlacesViewModel
 import be.student.cityshare.ui.trips.TripsViewModel
 import com.google.android.gms.location.LocationServices
+import java.net.URLEncoder
 import org.osmdroid.config.Configuration
 import org.osmdroid.events.MapEventsReceiver
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
@@ -73,6 +75,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.foundation.layout.heightIn
+import kotlinx.coroutines.launch
 
 @Composable
 fun OsmdroidWorldMapScreen(
@@ -82,11 +85,13 @@ fun OsmdroidWorldMapScreen(
 ) {
     val context = LocalContext.current
     val places by placesViewModel.places.collectAsState()
+    val trips by tripsViewModel.trips.collectAsState()
 
     var selectedCategories by remember { mutableStateOf<Set<String>>(emptySet()) }
     var showFilterDialog by remember { mutableStateOf(false) }
     var cityQuery by remember { mutableStateOf("") }
     val keyboardController = LocalSoftwareKeyboardController.current
+    val scope = rememberCoroutineScope()
     // Vaste basislocatie: Ellermanstraat 33, 2060 Antwerpen
     val userLocation = remember {
         Location("default").apply {
@@ -124,7 +129,24 @@ fun OsmdroidWorldMapScreen(
                 if (now - lastTapTime.value < 1500 && p != null) {
                     val lat = p.latitude
                     val lng = p.longitude
-                    navController.navigate("add_place/$lat/$lng")
+                    // Resolve address/city in background and navigate once (simplified: best-effort)
+                    scope.launch {
+                        val geo = android.location.Geocoder(context, java.util.Locale.getDefault())
+                        val res = try {
+                            geo.getFromLocation(lat, lng, 1)
+                        } catch (_: Exception) {
+                            null
+                        }
+                        val cityName = res?.firstOrNull()?.locality ?: res?.firstOrNull()?.subAdminArea ?: ""
+                        val country = res?.firstOrNull()?.countryName ?: ""
+                        val address = res?.firstOrNull()?.getAddressLine(0) ?: ""
+
+                        tripsViewModel.ensureCityExists(cityName.ifBlank { address }, country)
+
+                        val cityEnc = URLEncoder.encode(cityName, "UTF-8")
+                        val addrEnc = URLEncoder.encode(address, "UTF-8")
+                        navController.navigate("add_trip_prefill/$cityEnc/$addrEnc")
+                    }
                     lastTapTime.value = 0L
                 } else {
                     lastTapTime.value = now
@@ -160,9 +182,20 @@ fun OsmdroidWorldMapScreen(
                 (place.address?.contains(cityQuery, ignoreCase = true) == true)
         matchesCategory && matchesCity
     }
+    val filteredTrips = trips.filter { trip ->
+        val matchesCategory =
+            selectedCategories.isEmpty() || trip.category in selectedCategories
+        val matchesCity = cityQuery.isBlank() ||
+                (trip.cityName.contains(cityQuery, ignoreCase = true)) ||
+                (trip.address.contains(cityQuery, ignoreCase = true))
+        matchesCategory && matchesCity
+    }
 
     LaunchedEffect(mapView, filteredPlaces) {
         updateOsmdroidMarkers(mapView, filteredPlaces, navController)
+    }
+    LaunchedEffect(mapView, filteredTrips) {
+        updateTripMarkers(mapView, filteredTrips, navController)
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -250,6 +283,24 @@ fun OsmdroidWorldMapScreen(
             ) {
                 Text("Gefilterde plaatsen", style = MaterialTheme.typography.titleMedium)
                 Spacer(modifier = Modifier.size(4.dp))
+                if (filteredTrips.isNotEmpty()) {
+                    Text("Trips", style = MaterialTheme.typography.titleSmall)
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 220.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(filteredTrips) { trip ->
+                            TripListRow(trip = trip, onClick = {
+                                if (trip.id.isNotBlank()) {
+                                    navController.navigate("trip_detail/${trip.id}")
+                                }
+                            })
+                        }
+                    }
+                    Spacer(modifier = Modifier.size(8.dp))
+                }
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -352,7 +403,7 @@ private fun updateOsmdroidMarkers(
     places: List<SavedPlace>,
     navController: NavController
 ) {
-    mapView.overlays.removeAll { it is Marker }
+    mapView.overlays.removeAll { it is Marker && it.snippet != "trip_marker" }
 
     places.forEach { place ->
         val marker = Marker(mapView).apply {
@@ -360,8 +411,34 @@ private fun updateOsmdroidMarkers(
             title = place.title
             snippet = place.category
             setOnMarkerClickListener { _, _ ->
-                if (place.id.isNotBlank()) {
-                    navController.navigate("place_detail/${place.id}")
+                val city = URLEncoder.encode(place.cityName ?: "", "UTF-8")
+                val address = URLEncoder.encode(place.address ?: "", "UTF-8")
+                navController.navigate("add_trip_prefill/$city/$address")
+                true
+            }
+        }
+        mapView.overlays.add(marker)
+    }
+
+    mapView.invalidate()
+}
+
+private fun updateTripMarkers(
+    mapView: MapView,
+    trips: List<be.student.cityshare.model.Trip>,
+    navController: NavController
+) {
+    mapView.overlays.removeAll { it is Marker && it.snippet == "trip_marker" }
+
+    trips.forEach { trip ->
+        if (trip.latitude == 0.0 && trip.longitude == 0.0) return@forEach
+        val marker = Marker(mapView).apply {
+            position = GeoPoint(trip.latitude, trip.longitude)
+            title = trip.cityName.ifBlank { "Trip" }
+            snippet = "trip_marker"
+            setOnMarkerClickListener { _, _ ->
+                if (trip.id.isNotBlank()) {
+                    navController.navigate("trip_detail/${trip.id}")
                 }
                 true
             }
