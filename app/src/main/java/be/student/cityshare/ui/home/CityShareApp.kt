@@ -137,7 +137,8 @@ fun CityShareApp() {
         composable("map") {
             OsmdroidWorldMapScreen(
                 navController = navController,
-                placesViewModel = placesViewModel
+                placesViewModel = placesViewModel,
+                tripsViewModel = tripsViewModel
             )
         }
 

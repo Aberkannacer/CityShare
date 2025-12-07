@@ -51,7 +51,9 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
 import be.student.cityshare.model.SavedPlace
+import be.student.cityshare.model.TripReview
 import be.student.cityshare.ui.places.PlacesViewModel
+import be.student.cityshare.ui.trips.TripsViewModel
 import com.google.android.gms.location.LocationServices
 import org.osmdroid.config.Configuration
 import org.osmdroid.events.MapEventsReceiver
@@ -75,7 +77,8 @@ import androidx.compose.foundation.layout.heightIn
 @Composable
 fun OsmdroidWorldMapScreen(
     navController: NavController,
-    placesViewModel: PlacesViewModel
+    placesViewModel: PlacesViewModel,
+    tripsViewModel: TripsViewModel
 ) {
     val context = LocalContext.current
     val places by placesViewModel.places.collectAsState()
