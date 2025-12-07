@@ -10,6 +10,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.ui.graphics.Color
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Star
@@ -33,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.clickable
+import be.student.cityshare.model.TripReview
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,6 +48,8 @@ fun TripDetailScreen(
     val trips by tripsViewModel.trips.collectAsState()
     val userMap by tripsViewModel.userMap.collectAsState()
     val trip = trips.find { it.id == tripId }
+    val reviewsByTrip by tripsViewModel.reviews.collectAsState()
+    val reviews = reviewsByTrip[tripId].orEmpty()
 
     var rating by remember { mutableStateOf(0) }
     var comment by remember { mutableStateOf("") }
@@ -53,6 +59,10 @@ fun TripDetailScreen(
             rating = it.rating
             comment = it.comment
         }
+    }
+
+    LaunchedEffect(tripId) {
+        tripsViewModel.listenToReviews(tripId)
     }
 
     Scaffold(
@@ -117,13 +127,56 @@ fun TripDetailScreen(
 
             Button(
                 onClick = {
-                    tripsViewModel.updateTripReview(trip.id, rating, comment)
-                    onBack()
+                    tripsViewModel.addReview(trip.id, rating, comment)
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Opslaan")
             }
+
+            Spacer(modifier = Modifier.height(12.dp))
+            Text("Reviews", style = MaterialTheme.typography.titleMedium)
+            if (reviews.isEmpty()) {
+                Text("Nog geen reviews.")
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(reviews) { review ->
+                        ReviewItem(
+                            review = review,
+                            fallbackName = userMap[review.userId] ?: "Onbekend"
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReviewItem(review: TripReview, fallbackName: String) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        val name = review.userName.ifBlank { fallbackName }
+        Text(text = name, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row {
+            (1..5).forEach { i ->
+                Icon(
+                    imageVector = if (i <= review.rating) Icons.Filled.Star else Icons.Filled.StarBorder,
+                    contentDescription = null,
+                    tint = if (i <= review.rating) Color(0xFFFFC107) else Color.Gray,
+                    modifier = Modifier.padding(end = 2.dp)
+                )
+            }
+        }
+        if (review.comment.isNotBlank()) {
+            Text(text = review.comment, style = MaterialTheme.typography.bodyMedium)
         }
     }
 }

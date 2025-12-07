@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import be.student.cityshare.model.Trip
+import be.student.cityshare.model.TripReview
 import be.student.cityshare.utils.uriToBase64
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.FieldValue
@@ -43,7 +44,11 @@ class TripsViewModel : ViewModel() {
     private val _userMap = MutableStateFlow<Map<String, String>>(emptyMap())
     val userMap: StateFlow<Map<String, String>> = _userMap
 
+    private val _reviews = MutableStateFlow<Map<String, List<TripReview>>>(emptyMap())
+    val reviews: StateFlow<Map<String, List<TripReview>>> = _reviews
+
     private var tripsListener: ListenerRegistration? = null
+    private val reviewListeners = mutableMapOf<String, ListenerRegistration>()
 
     init {
         listenToCities()
@@ -78,6 +83,54 @@ class TripsViewModel : ViewModel() {
                     )
                 } ?: emptyList()
             }
+    }
+
+    fun listenToReviews(tripId: String) {
+        if (tripId.isBlank()) return
+        reviewListeners[tripId]?.remove()
+
+        val reg = db.collection("tripReviews")
+            .whereEqualTo("tripId", tripId)
+            .addSnapshotListener { snap, _ ->
+                val list = snap?.documents?.mapNotNull { doc ->
+                    TripReview(
+                        id = doc.id,
+                        tripId = doc.getString("tripId") ?: tripId,
+                        userId = doc.getString("userId") ?: "",
+                        userName = doc.getString("userName") ?: "",
+                        rating = (doc.getLong("rating") ?: 0L).toInt(),
+                        comment = doc.getString("comment") ?: ""
+                    )
+                } ?: emptyList()
+
+                _reviews.value = _reviews.value.toMutableMap().apply {
+                    this[tripId] = list
+                }
+            }
+
+        reviewListeners[tripId] = reg
+    }
+
+    fun addReview(
+        tripId: String,
+        rating: Int,
+        comment: String
+    ) {
+        val userId = auth.currentUser?.uid ?: return
+        val displayName = auth.currentUser?.displayName
+            ?: auth.currentUser?.email
+            ?: "Onbekende gebruiker"
+
+        val data = mapOf(
+            "tripId" to tripId,
+            "userId" to userId,
+            "userName" to displayName,
+            "rating" to rating,
+            "comment" to comment.trim(),
+            "createdAt" to FieldValue.serverTimestamp()
+        )
+
+        db.collection("tripReviews").add(data)
     }
 
     fun updateTripReview(tripId: String, rating: Int, comment: String) {

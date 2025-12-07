@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -27,6 +28,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -64,6 +67,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.TextButton
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.foundation.layout.heightIn
 
 @Composable
@@ -76,6 +82,8 @@ fun OsmdroidWorldMapScreen(
 
     var selectedCategories by remember { mutableStateOf<Set<String>>(emptySet()) }
     var showFilterDialog by remember { mutableStateOf(false) }
+    var cityQuery by remember { mutableStateOf("") }
+    val keyboardController = LocalSoftwareKeyboardController.current
     // Vaste basislocatie: Ellermanstraat 33, 2060 Antwerpen
     val userLocation = remember {
         Location("default").apply {
@@ -141,12 +149,14 @@ fun OsmdroidWorldMapScreen(
         }
     }
 
-    val filteredPlaces =
-        if (selectedCategories.isEmpty()) {
-            places
-        } else {
-            places.filter { it.category in selectedCategories }
-        }
+    val filteredPlaces = places.filter { place ->
+        val matchesCategory =
+            selectedCategories.isEmpty() || place.category in selectedCategories
+        val matchesCity = cityQuery.isBlank() ||
+                (place.cityName?.contains(cityQuery, ignoreCase = true) == true) ||
+                (place.address?.contains(cityQuery, ignoreCase = true) == true)
+        matchesCategory && matchesCity
+    }
 
     LaunchedEffect(mapView, filteredPlaces) {
         updateOsmdroidMarkers(mapView, filteredPlaces, navController)
@@ -184,6 +194,43 @@ fun OsmdroidWorldMapScreen(
                 imageVector = Icons.Default.FilterList,
                 contentDescription = "Filter plaatsen"
             )
+        }
+
+        Surface(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 72.dp, start = 16.dp, end = 16.dp),
+            tonalElevation = 6.dp
+        ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                OutlinedTextField(
+                    value = cityQuery,
+                    onValueChange = { cityQuery = it },
+                    modifier = Modifier
+                        .fillMaxWidth(),
+                    label = { Text("Zoek op stad") },
+                    singleLine = true,
+                    keyboardActions = KeyboardActions(
+                        onDone = {
+                            moveToFirstResult(filteredPlaces, mapView)
+                            keyboardController?.hide()
+                        }
+                    ),
+                    keyboardOptions = KeyboardOptions.Default.copy(
+                        imeAction = ImeAction.Done
+                    )
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(
+                    onClick = {
+                        moveToFirstResult(filteredPlaces, mapView)
+                        keyboardController?.hide()
+                    },
+                    modifier = Modifier.align(Alignment.End)
+                ) {
+                    Text("Ga naar stad")
+                }
+            }
         }
 
         Surface(
@@ -318,6 +365,12 @@ private fun updateOsmdroidMarkers(
 }
 
     mapView.invalidate()
+}
+
+private fun moveToFirstResult(places: List<SavedPlace>, mapView: MapView) {
+    val target = places.firstOrNull() ?: return
+    mapView.controller.setZoom(13.0)
+    mapView.controller.animateTo(GeoPoint(target.latitude, target.longitude))
 }
 
 @Composable
