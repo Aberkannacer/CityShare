@@ -6,6 +6,7 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import be.student.cityshare.model.SavedPlace
+import be.student.cityshare.model.PlaceReview
 import be.student.cityshare.utils.getAddressFromLocation
 import be.student.cityshare.utils.uriToBase64
 import com.google.firebase.auth.ktx.auth
@@ -32,9 +33,18 @@ class PlacesViewModel : ViewModel() {
     private val _categories = MutableStateFlow<List<String>>(emptyList())
     val categories: StateFlow<List<String>> = _categories
 
+    private val _placeReviews = MutableStateFlow<Map<String, List<PlaceReview>>>(emptyMap())
+    val placeReviews: StateFlow<Map<String, List<PlaceReview>>> = _placeReviews
+
+    private val reviewListeners = mutableMapOf<String, com.google.firebase.firestore.ListenerRegistration>()
+
+    private val _userMap = MutableStateFlow<Map<String, String>>(emptyMap())
+    val userMap: StateFlow<Map<String, String>> = _userMap
+
     init {
         listenToPlaces()
         listenToCategories()
+        loadUsers()
     }
 
     private fun listenToPlaces() {
@@ -54,6 +64,19 @@ class PlacesViewModel : ViewModel() {
 
                 _categories.value = list.sorted()
             }
+    }
+
+    private fun loadUsers() {
+        db.collection("users").get().addOnSuccessListener { snap ->
+            val map = snap.documents.associate { doc ->
+                val uid = doc.getString("uid") ?: doc.id
+                val name = doc.getString("displayName")
+                    ?: doc.getString("email")
+                    ?: uid
+                uid to name
+            }
+            _userMap.value = map
+        }
     }
 
     private suspend fun resolveOrCreateCity(
@@ -146,15 +169,62 @@ class PlacesViewModel : ViewModel() {
     }
 
     fun updatePlaceDetails(placeId: String, rating: Int, comment: String) {
+        // legacy; no-op retained for compatibility
+    }
+
+    fun listenToPlaceReviews(placeId: String) {
         if (placeId.isBlank()) return
+        reviewListeners[placeId]?.remove()
 
-        val updates = mapOf(
-            "rating" to rating,
-            "comment" to comment
-        )
+        val reg = db.collection("placeReviews")
+            .whereEqualTo("placeId", placeId)
+            .addSnapshotListener { snap, _ ->
+                val list = snap?.toObjects<PlaceReview>() ?: emptyList()
+                _placeReviews.value = _placeReviews.value.toMutableMap().apply {
+                    this[placeId] = list
+                }
+            }
+        reviewListeners[placeId] = reg
+    }
 
-        db.collection("places")
-            .document(placeId)
-            .update(updates)
+    fun addPlaceReview(placeId: String, rating: Int, comment: String) {
+        val userId = auth.currentUser?.uid ?: return
+        val userName = _userMap.value[userId]
+            ?: auth.currentUser?.displayName
+            ?: auth.currentUser?.email
+            ?: "Onbekende gebruiker"
+
+        viewModelScope.launch {
+            try {
+                val existing = db.collection("placeReviews")
+                    .whereEqualTo("placeId", placeId)
+                    .whereEqualTo("userId", userId)
+                    .limit(1)
+                    .get()
+                    .await()
+
+                if (!existing.isEmpty) {
+                    val docId = existing.documents.first().id
+                    val updates = mapOf(
+                        "rating" to rating,
+                        "comment" to comment.trim(),
+                        "userName" to userName,
+                        "updatedAt" to com.google.firebase.firestore.FieldValue.serverTimestamp()
+                    )
+                    db.collection("placeReviews").document(docId).update(updates)
+                } else {
+                    val data = mapOf(
+                        "placeId" to placeId,
+                        "userId" to userId,
+                        "userName" to userName,
+                        "rating" to rating,
+                        "comment" to comment.trim(),
+                        "createdAt" to com.google.firebase.firestore.FieldValue.serverTimestamp()
+                    )
+                    db.collection("placeReviews").add(data)
+                }
+            } catch (_: Exception) {
+            }
+        }
     }
 }

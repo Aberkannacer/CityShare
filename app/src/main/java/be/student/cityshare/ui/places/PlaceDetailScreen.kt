@@ -22,9 +22,15 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import be.student.cityshare.model.PlaceReview
 import be.student.cityshare.utils.toBitmap
 import coil.compose.AsyncImage
 import java.util.Locale
+import com.google.firebase.auth.ktx.auth
+import com.google.firebase.ktx.Firebase
+import androidx.compose.runtime.collectAsState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,6 +42,10 @@ fun PlaceDetailScreen(
 
     val places by placesViewModel.places.collectAsState()
     val place = places.find { it.id == placeId }
+    val reviewsByPlace by placesViewModel.placeReviews.collectAsState()
+    val reviews = reviewsByPlace[placeId].orEmpty()
+    val currentUserId = Firebase.auth.currentUser?.uid
+    val userMap by placesViewModel.userMap.collectAsState()
 
     val context = LocalContext.current
 
@@ -43,6 +53,7 @@ fun PlaceDetailScreen(
     var comment by remember { mutableStateOf("") }
     var distanceMeters by remember { mutableStateOf<Double?>(null) }
     var distanceError by remember { mutableStateOf<String?>(null) }
+    // Vast startpunt: Ellermanstraat 33, 2060 Antwerpen
     val defaultLocation = remember {
         Location("default").apply {
             latitude = 51.2303
@@ -57,36 +68,58 @@ fun PlaceDetailScreen(
         }
     }
 
+    LaunchedEffect(placeId) {
+        placesViewModel.listenToPlaceReviews(placeId)
+    }
+
+    LaunchedEffect(reviews) {
+        val mine = reviews.firstOrNull { it.userId == currentUserId }
+        if (mine != null) {
+            rating = mine.rating
+            comment = mine.comment
+        }
+    }
+
     LaunchedEffect(place) {
         if (place == null) return@LaunchedEffect
 
-        val fine =
-            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)
-        val coarse =
-            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION)
+        // Startlocatie altijd Ellermanstraat
+        val userLoc = defaultLocation
 
-        if (fine != PackageManager.PERMISSION_GRANTED &&
-            coarse != PackageManager.PERMISSION_GRANTED
-        ) {
-            distanceError = "Locatietoestemming ontbreekt"
-            return@LaunchedEffect
+        val targetLatLng = withContext(Dispatchers.IO) {
+            when {
+                place.latitude != 0.0 || place.longitude != 0.0 -> place.latitude to place.longitude
+                !place.address.isNullOrBlank() -> {
+                    try {
+                        val geo = android.location.Geocoder(context, Locale.getDefault())
+                        val res = geo.getFromLocationName(place.address, 1)
+                        val loc = res?.firstOrNull()
+                        (loc?.latitude ?: 0.0) to (loc?.longitude ?: 0.0)
+                    } catch (_: Exception) {
+                        0.0 to 0.0
+                    }
+                }
+                else -> 0.0 to 0.0
+            }
         }
 
-        val lm = context.getSystemService(LocationManager::class.java)
-        val userLoc = lm.getLastKnownLocation(LocationManager.GPS_PROVIDER)
-            ?: lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
-            ?: defaultLocation
+        if (targetLatLng.first == 0.0 && targetLatLng.second == 0.0) {
+            distanceError = "Geen coördinaten beschikbaar"
+            distanceMeters = null
+            return@LaunchedEffect
+        }
 
         val result = FloatArray(1)
         Location.distanceBetween(
             userLoc.latitude,
             userLoc.longitude,
-            place.latitude,
-            place.longitude,
+            targetLatLng.first,
+            targetLatLng.second,
             result
         )
 
         distanceMeters = result[0].toDouble()
+        distanceError = null
     }
 
     Scaffold(
@@ -167,13 +200,55 @@ fun PlaceDetailScreen(
 
             Button(
                 onClick = {
-                    placesViewModel.updatePlaceDetails(place.id, rating, comment)
-                    onBack()
+                    placesViewModel.addPlaceReview(place.id, rating, comment)
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Opslaan")
             }
+
+            Divider()
+            Text("Reviews", style = MaterialTheme.typography.titleMedium)
+            if (reviews.isEmpty()) {
+                Text("Nog geen reviews.")
+            } else {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    reviews.forEach { review ->
+                        ReviewRow(
+                            name = review.userName.ifBlank { userMap[review.userId] ?: "Onbekende gebruiker" },
+                            rating = review.rating,
+                            comment = review.comment
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReviewRow(name: String, rating: Int, comment: String) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            text = name,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Row {
+            (1..5).forEach { i ->
+                Icon(
+                    imageVector = if (i <= rating) Icons.Default.Star else Icons.Default.StarBorder,
+                    contentDescription = null,
+                    tint = if (i <= rating) Color(0xFFFFC107) else Color.Gray
+                )
+            }
+        }
+        if (comment.isNotBlank()) {
+            Text(comment, style = MaterialTheme.typography.bodyMedium)
         }
     }
 }

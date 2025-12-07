@@ -360,12 +360,14 @@ private fun updateOsmdroidMarkers(
             title = place.title
             snippet = place.category
             setOnMarkerClickListener { _, _ ->
-                navController.navigate("place_detail/${place.id}")
+                if (place.id.isNotBlank()) {
+                    navController.navigate("place_detail/${place.id}")
+                }
                 true
             }
         }
-    mapView.overlays.add(marker)
-}
+        mapView.overlays.add(marker)
+    }
 
     mapView.invalidate()
 }

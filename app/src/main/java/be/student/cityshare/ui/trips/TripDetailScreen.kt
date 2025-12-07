@@ -10,8 +10,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.graphics.Color
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -139,16 +137,17 @@ fun TripDetailScreen(
             if (reviews.isEmpty()) {
                 Text("Nog geen reviews.")
             } else {
-                LazyColumn(
+                Column(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(reviews) { review ->
+                    reviews.forEach { review ->
                         ReviewItem(
                             review = review,
                             fallbackName = userMap[review.userId] ?: "Onbekend"
                         )
                     }
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
             }
         }
