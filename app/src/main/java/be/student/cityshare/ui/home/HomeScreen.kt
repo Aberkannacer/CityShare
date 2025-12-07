@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.automirrored.filled.Message
@@ -56,7 +58,8 @@ fun HomeScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(16.dp),
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             HomeCard(
@@ -70,7 +73,7 @@ fun HomeScreen(
                 onClick = onNavigateToAddTrip
             )
             HomeCard(
-                title = "Mijn Plaatsen",
+                title = "Mijn trips",
                 icon = Icons.AutoMirrored.Filled.List,
                 onClick = onNavigateToPlaces
             )

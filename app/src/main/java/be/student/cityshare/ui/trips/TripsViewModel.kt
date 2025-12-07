@@ -9,6 +9,7 @@ import be.student.cityshare.utils.uriToBase64
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.ktx.firestore
+import com.google.firebase.firestore.ktx.toObjects
 import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -35,9 +36,31 @@ class TripsViewModel : ViewModel() {
     private val _saving = MutableStateFlow(false)
     val saving: StateFlow<Boolean> = _saving
 
+    private val _trips = MutableStateFlow<List<Trip>>(emptyList())
+    val trips: StateFlow<List<Trip>> = _trips
+
     init {
         listenToCities()
         listenToCategories()
+        listenToTrips()
+    }
+
+    private fun listenToTrips() {
+        db.collection("trips")
+            .addSnapshotListener { snap, _ ->
+                _trips.value = snap?.documents?.mapNotNull { doc ->
+                    Trip(
+                        id = doc.getString("id") ?: doc.id,
+                        userId = doc.getString("userId") ?: "",
+                        cityId = doc.getString("cityId") ?: "",
+                        cityName = doc.getString("cityName") ?: "",
+                        category = doc.getString("category") ?: "",
+                        address = doc.getString("address") ?: "",
+                        notes = doc.getString("notes") ?: "",
+                        imageBase64 = doc.getString("imageBase64")
+                    )
+                } ?: emptyList()
+            }
     }
 
     private fun listenToCities() {

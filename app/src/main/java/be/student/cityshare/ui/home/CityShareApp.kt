@@ -27,6 +27,7 @@ import be.student.cityshare.ui.places.PlacesViewModel
 import be.student.cityshare.ui.profile.ProfileScreen
 import be.student.cityshare.ui.trips.AddTripScreen
 import be.student.cityshare.ui.trips.TripsViewModel
+import be.student.cityshare.ui.trips.TripsListScreen
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
 import java.net.URLEncoder
@@ -72,7 +73,7 @@ fun CityShareApp() {
         composable("home") {
             HomeScreen(
                 onNavigateToMap = { navController.navigate("map") },
-                onNavigateToPlaces = { navController.navigate("places") },
+                onNavigateToPlaces = { navController.navigate("trips") },
                 onNavigateToCities = { navController.navigate("cities") },
                 onNavigateToAddTrip = { navController.navigate("add_trip") },
                 onNavigateToProfile = { navController.navigate("profile") },
@@ -211,6 +212,13 @@ fun CityShareApp() {
             AddCityScreen(
                 onSaved = { navController.popBackStack() },
                 onCancel = { navController.popBackStack() }
+            )
+        }
+
+        composable("trips") {
+            TripsListScreen(
+                tripsViewModel = tripsViewModel,
+                onBack = { navController.popBackStack() }
             )
         }
 

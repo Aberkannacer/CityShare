@@ -1,4 +1,4 @@
-package be.student.cityshare.ui.places
+package be.student.cityshare.ui.trips
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -28,19 +28,19 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import be.student.cityshare.model.SavedPlace
+import be.student.cityshare.model.Trip
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PlacesListScreen(
-    placesViewModel: PlacesViewModel,
-    onBack: () -> Unit,
-    onPlaceClick: (SavedPlace) -> Unit
+fun TripsListScreen(
+    tripsViewModel: TripsViewModel,
+    onBack: () -> Unit
 ) {
-    val places by placesViewModel.places.collectAsState()
+    val trips by tripsViewModel.trips.collectAsState()
     val userId = Firebase.auth.currentUser?.uid
+    val myTrips = trips.filter { it.userId == userId }
 
     Scaffold(
         topBar = {
@@ -54,8 +54,6 @@ fun PlacesListScreen(
             )
         }
     ) { padding ->
-        val myTrips = places.filter { it.userId == userId }
-
         LazyColumn(
             modifier = Modifier.padding(padding),
             contentPadding = PaddingValues(16.dp),
@@ -64,8 +62,8 @@ fun PlacesListScreen(
             if (myTrips.isEmpty()) {
                 item { Text("Nog geen trips opgeslagen.") }
             } else {
-                items(myTrips) {
-                    PlaceListItem(place = it, onClick = { onPlaceClick(it) })
+                items(myTrips) { trip ->
+                    TripListItem(trip = trip)
                 }
             }
         }
@@ -73,39 +71,34 @@ fun PlacesListScreen(
 }
 
 @Composable
-fun PlaceListItem(
-    place: SavedPlace,
-    onClick: () -> Unit
-) {
+private fun TripListItem(trip: Trip) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        onClick = onClick
+        modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(text = place.title, style = MaterialTheme.typography.titleMedium)
+            Text(text = trip.cityName.ifBlank { "Onbekende stad" }, style = MaterialTheme.typography.titleMedium)
             Spacer(modifier = Modifier.height(4.dp))
-            Text(text = place.category, style = MaterialTheme.typography.bodySmall)
+            Text(text = trip.category, style = MaterialTheme.typography.bodySmall)
 
-            if (place.rating > 0) {
+            if (trip.address.isNotBlank()) {
                 Spacer(modifier = Modifier.height(8.dp))
-                Row {
-                    (1..5).forEach { starIndex ->
-                        Icon(
-                            imageVector = if (starIndex <= place.rating) Icons.Default.Star else Icons.Default.StarBorder,
-                            contentDescription = "Rating",
-                            tint = if (starIndex <= place.rating) Color(0xFFFFC107) else Color.Gray
-                        )
-                    }
-                }
+                Text(trip.address, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
 
-            if (place.comment.isNotBlank()) {
+            if (trip.notes.isNotBlank()) {
                 Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = place.comment,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Text(trip.notes, style = MaterialTheme.typography.bodyMedium)
+            }
+
+            // Placeholder stars to align with existing UI; no ratings stored on trips yet.
+            Row {
+                (1..5).forEach { starIndex ->
+                    Icon(
+                        imageVector = Icons.Default.StarBorder,
+                        contentDescription = "Rating",
+                        tint = Color.Gray
+                    )
+                }
             }
         }
     }
