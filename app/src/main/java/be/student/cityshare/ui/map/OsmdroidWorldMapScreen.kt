@@ -5,20 +5,29 @@ import android.widget.Toast
 import android.content.pm.PackageManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -54,6 +63,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.Surface
+import androidx.compose.foundation.layout.heightIn
 
 @Composable
 fun OsmdroidWorldMapScreen(
@@ -139,15 +150,15 @@ fun OsmdroidWorldMapScreen(
         }
     }
 
-    LaunchedEffect(mapView, places, selectedCategories) {
-        val placesToDisplay =
-            if (selectedCategories.isEmpty()) {
-                places
-            } else {
-                places.filter { it.category in selectedCategories }
-            }
+    val filteredPlaces =
+        if (selectedCategories.isEmpty()) {
+            places
+        } else {
+            places.filter { it.category in selectedCategories }
+        }
 
-        updateOsmdroidMarkers(mapView, placesToDisplay, navController)
+    LaunchedEffect(mapView, filteredPlaces) {
+        updateOsmdroidMarkers(mapView, filteredPlaces, navController)
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -182,6 +193,37 @@ fun OsmdroidWorldMapScreen(
                 imageVector = Icons.Default.FilterList,
                 contentDescription = "Filter plaatsen"
             )
+        }
+
+        Surface(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .padding(8.dp),
+            tonalElevation = 4.dp
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp)
+            ) {
+                Text("Gefilterde plaatsen", style = MaterialTheme.typography.titleMedium)
+                Spacer(modifier = Modifier.size(4.dp))
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 220.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (filteredPlaces.isEmpty()) {
+                        item { Text("Geen plaatsen in deze filter.") }
+                    } else {
+                        items(filteredPlaces) { place ->
+                            PlaceListRow(place = place, onClick = { navController.navigate("place_detail/${place.id}") })
+                        }
+                    }
+                }
+            }
         }
 
         if (showFilterDialog) {
@@ -277,8 +319,42 @@ private fun updateOsmdroidMarkers(
                 true
             }
         }
-        mapView.overlays.add(marker)
-    }
+    mapView.overlays.add(marker)
+}
 
     mapView.invalidate()
+}
+
+@Composable
+private fun PlaceListRow(place: SavedPlace, onClick: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(8.dp)
+    ) {
+        Text(place.title, style = MaterialTheme.typography.titleSmall)
+        Text(place.category, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+
+        if (place.rating > 0) {
+            Row {
+                (1..5).forEach { i ->
+                    Icon(
+                        imageVector = if (i <= place.rating) Icons.Filled.Star else Icons.Filled.StarBorder,
+                        contentDescription = null,
+                        tint = if (i <= place.rating) Color(0xFFFFC107) else Color.Gray,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+        }
+
+        if (place.comment.isNotBlank()) {
+            Text(
+                text = place.comment,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
 }

@@ -28,6 +28,7 @@ import be.student.cityshare.ui.profile.ProfileScreen
 import be.student.cityshare.ui.trips.AddTripScreen
 import be.student.cityshare.ui.trips.TripsViewModel
 import be.student.cityshare.ui.trips.TripsListScreen
+import be.student.cityshare.ui.trips.TripDetailScreen
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
 import java.net.URLEncoder
@@ -217,6 +218,18 @@ fun CityShareApp() {
 
         composable("trips") {
             TripsListScreen(
+                tripsViewModel = tripsViewModel,
+                onBack = { navController.popBackStack() },
+                onTripClick = { tripId -> navController.navigate("trip_detail/$tripId") }
+            )
+        }
+
+        composable("trip_detail/{tripId}",
+            arguments = listOf(navArgument("tripId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val tripId = backStackEntry.arguments?.getString("tripId") ?: ""
+            TripDetailScreen(
+                tripId = tripId,
                 tripsViewModel = tripsViewModel,
                 onBack = { navController.popBackStack() }
             )

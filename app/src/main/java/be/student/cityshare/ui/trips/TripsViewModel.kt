@@ -39,10 +39,14 @@ class TripsViewModel : ViewModel() {
     private val _trips = MutableStateFlow<List<Trip>>(emptyList())
     val trips: StateFlow<List<Trip>> = _trips
 
+    private val _userMap = MutableStateFlow<Map<String, String>>(emptyMap())
+    val userMap: StateFlow<Map<String, String>> = _userMap
+
     init {
         listenToCities()
         listenToCategories()
         listenToTrips()
+        loadUsers()
     }
 
     private fun listenToTrips() {
@@ -62,6 +66,32 @@ class TripsViewModel : ViewModel() {
                         comment = doc.getString("comment") ?: ""
                     )
                 } ?: emptyList()
+            }
+    }
+
+    fun updateTripReview(tripId: String, rating: Int, comment: String) {
+        if (tripId.isBlank()) return
+
+        val updates = mapOf(
+            "rating" to rating,
+            "comment" to comment.trim()
+        )
+
+        db.collection("trips")
+            .document(tripId)
+            .update(updates)
+    }
+
+    private fun loadUsers() {
+        db.collection("users")
+            .get()
+            .addOnSuccessListener { result ->
+                val map = result.documents.associate { doc ->
+                    val uid = doc.getString("uid") ?: doc.id
+                    val name = doc.getString("displayName") ?: doc.getString("email") ?: "Onbekende gebruiker"
+                    uid to name
+                }
+                _userMap.value = map
             }
     }
 

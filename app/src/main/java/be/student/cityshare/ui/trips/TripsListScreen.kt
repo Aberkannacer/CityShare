@@ -36,11 +36,14 @@ import com.google.firebase.ktx.Firebase
 @Composable
 fun TripsListScreen(
     tripsViewModel: TripsViewModel,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onTripClick: (String) -> Unit
 ) {
     val trips by tripsViewModel.trips.collectAsState()
+    val userMap by tripsViewModel.userMap.collectAsState()
     val userId = Firebase.auth.currentUser?.uid
     val myTrips = trips.filter { it.userId == userId }
+    val otherTrips = trips.filter { it.userId != userId && (it.rating > 0 || it.comment.isNotBlank()) }
 
     Scaffold(
         topBar = {
@@ -63,7 +66,15 @@ fun TripsListScreen(
                 item { Text("Nog geen trips opgeslagen.") }
             } else {
                 items(myTrips) { trip ->
-                    TripListItem(trip = trip)
+                    TripListItem(trip = trip, userName = userMap[trip.userId], onClick = { onTripClick(trip.id) })
+                }
+            }
+
+            if (otherTrips.isNotEmpty()) {
+                item { Spacer(modifier = Modifier.height(12.dp)) }
+                item { Text("Reviews van anderen", style = MaterialTheme.typography.titleMedium) }
+                items(otherTrips) { trip ->
+                    TripListItem(trip = trip, userName = userMap[trip.userId], onClick = { onTripClick(trip.id) })
                 }
             }
         }
@@ -71,14 +82,21 @@ fun TripsListScreen(
 }
 
 @Composable
-private fun TripListItem(trip: Trip) {
+private fun TripListItem(trip: Trip, userName: String?, onClick: () -> Unit) {
     Card(
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth(),
+        onClick = onClick
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(text = trip.cityName.ifBlank { "Onbekende stad" }, style = MaterialTheme.typography.titleMedium)
             Spacer(modifier = Modifier.height(4.dp))
             Text(text = trip.category, style = MaterialTheme.typography.bodySmall)
+
+            userName?.let {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(text = "Door: $it", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
 
             if (trip.address.isNotBlank()) {
                 Spacer(modifier = Modifier.height(8.dp))
