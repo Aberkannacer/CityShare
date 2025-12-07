@@ -43,6 +43,12 @@ fun PlaceDetailScreen(
     var comment by remember { mutableStateOf("") }
     var distanceMeters by remember { mutableStateOf<Double?>(null) }
     var distanceError by remember { mutableStateOf<String?>(null) }
+    val defaultLocation = remember {
+        Location("default").apply {
+            latitude = 51.2303
+            longitude = 4.4092
+        }
+    }
 
     LaunchedEffect(place) {
         place?.let {
@@ -69,11 +75,7 @@ fun PlaceDetailScreen(
         val lm = context.getSystemService(LocationManager::class.java)
         val userLoc = lm.getLastKnownLocation(LocationManager.GPS_PROVIDER)
             ?: lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
-
-        if (userLoc == null) {
-            distanceError = "Locatie niet beschikbaar"
-            return@LaunchedEffect
-        }
+            ?: defaultLocation
 
         val result = FloatArray(1)
         Location.distanceBetween(

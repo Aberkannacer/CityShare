@@ -68,7 +68,7 @@ fun AddTripScreen(
 
     var selectedCity by remember { mutableStateOf<CityOption?>(null) }
     var selectedCategory by remember { mutableStateOf<String?>(null) }
-    var address by remember { mutableStateOf("") }
+    var address by remember { mutableStateOf("Ellermanstraat 33, 2060 Antwerpen") }
     var notes by remember { mutableStateOf("") }
     var rating by remember { mutableStateOf(0) }
     var comment by remember { mutableStateOf("") }

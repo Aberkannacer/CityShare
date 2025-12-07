@@ -20,6 +20,7 @@ fun getAddressFromLocation(
         }
     } catch (e: Exception) {
         e.printStackTrace()
-        null
+        // Fallback: vaste thuisbasis indien geocoder faalt
+        "Ellermanstraat 33, 2060 Antwerpen"
     }
 }

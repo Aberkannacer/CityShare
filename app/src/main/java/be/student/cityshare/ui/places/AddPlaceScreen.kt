@@ -47,7 +47,7 @@ fun AddPlaceScreen(
     LaunchedEffect(Unit) {
         loading = true
         address = withContext(Dispatchers.IO) {
-            getAddressFromLocation(context, lat, lng)
+            getAddressFromLocation(context, lat, lng) ?: "Ellermanstraat 33, 2060 Antwerpen"
         }
         loading = false
     }

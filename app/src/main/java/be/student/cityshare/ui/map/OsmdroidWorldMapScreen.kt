@@ -3,6 +3,7 @@ package be.student.cityshare.ui.map
 import android.Manifest
 import android.widget.Toast
 import android.content.pm.PackageManager
+import android.location.Location
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -63,7 +64,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.Surface
 import androidx.compose.foundation.layout.heightIn
 
 @Composable
@@ -76,6 +76,13 @@ fun OsmdroidWorldMapScreen(
 
     var selectedCategories by remember { mutableStateOf<Set<String>>(emptySet()) }
     var showFilterDialog by remember { mutableStateOf(false) }
+    // Vaste basislocatie: Ellermanstraat 33, 2060 Antwerpen
+    val userLocation = remember {
+        Location("default").apply {
+            latitude = 51.2303
+            longitude = 4.4092
+        }
+    }
 
     DisposableEffect(Unit) {
         Configuration.getInstance().userAgentValue = context.packageName
@@ -87,28 +94,12 @@ fun OsmdroidWorldMapScreen(
             setTileSource(TileSourceFactory.MAPNIK)
             setMultiTouchControls(true)
 
-            controller.setZoom(17.5)
-            controller.setCenter(GeoPoint(51.230063993584075, 4.4161542423283064))
+            controller.setZoom(12.0)
+            controller.setCenter(GeoPoint(51.2194, 4.4025)) // Antwerpen
 
             zoomController.setVisibility(
                 CustomZoomButtonsController.Visibility.SHOW_AND_FADEOUT
             )
-
-            if (
-                ContextCompat.checkSelfPermission(
-                    context,
-                    Manifest.permission.ACCESS_FINE_LOCATION
-                ) == PackageManager.PERMISSION_GRANTED
-            ) {
-                val fusedClient = LocationServices.getFusedLocationProviderClient(context)
-                fusedClient.lastLocation.addOnSuccessListener { location ->
-                    if (location != null) {
-                        val myPoint = GeoPoint(location.latitude, location.longitude)
-                        controller.setZoom(17.5)
-                        controller.animateTo(myPoint)
-                    }
-                }
-            }
         }
     }
 
@@ -219,7 +210,11 @@ fun OsmdroidWorldMapScreen(
                         item { Text("Geen plaatsen in deze filter.") }
                     } else {
                         items(filteredPlaces) { place ->
-                            PlaceListRow(place = place, onClick = { navController.navigate("place_detail/${place.id}") })
+                            PlaceListRow(
+                                place = place,
+                                userLocation = userLocation,
+                                onClick = { navController.navigate("place_detail/${place.id}") }
+                            )
                         }
                     }
                 }
@@ -326,7 +321,19 @@ private fun updateOsmdroidMarkers(
 }
 
 @Composable
-private fun PlaceListRow(place: SavedPlace, onClick: () -> Unit) {
+private fun PlaceListRow(place: SavedPlace, userLocation: Location?, onClick: () -> Unit) {
+    val hasCoords = place.latitude != 0.0 || place.longitude != 0.0
+    val distanceText = if (userLocation != null && hasCoords) {
+        val result = FloatArray(1)
+        Location.distanceBetween(
+            userLocation.latitude, userLocation.longitude,
+            place.latitude, place.longitude,
+            result
+        )
+        val km = result[0] / 1000f
+        String.format("%.1f km", km)
+    } else null
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -335,6 +342,10 @@ private fun PlaceListRow(place: SavedPlace, onClick: () -> Unit) {
     ) {
         Text(place.title, style = MaterialTheme.typography.titleSmall)
         Text(place.category, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+
+        distanceText?.let {
+            Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
 
         if (place.rating > 0) {
             Row {

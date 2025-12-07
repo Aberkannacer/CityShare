@@ -2,6 +2,7 @@ package be.student.cityshare.ui.cities
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.location.Location
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -26,6 +27,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -45,6 +47,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.util.Locale
 import android.location.Geocoder
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.pow
+import kotlin.math.sin
 import org.osmdroid.config.Configuration
 import org.osmdroid.events.MapEventsReceiver
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
@@ -64,6 +70,14 @@ fun AddCityMapScreen(
     var selectedLabel by remember { mutableStateOf<String?>(null) }
     var saving by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    // Default locatie: Ellermanstraat 33, 2060 Antwerpen
+    val userLocation = remember {
+        Location("default").apply {
+            latitude = 51.2303
+            longitude = 4.4092
+        }
+    }
+    var distanceText by remember { mutableStateOf<String?>(null) }
 
     DisposableEffect(Unit) {
         Configuration.getInstance().userAgentValue = context.packageName
@@ -86,7 +100,20 @@ fun AddCityMapScreen(
                 if (p != null) {
                     selectedPoint = p
                     selectedLabel = null
+                    distanceText = null
                     error = null
+
+                    // Bereken afstand direct op basis van vaste (of gevonden) userLocation
+                    userLocation?.let { loc ->
+                        val km = calculateDistanceKm(
+                            loc.latitude,
+                            loc.longitude,
+                            p.latitude,
+                            p.longitude
+                        )
+                        distanceText = String.format("%.1f km", km)
+                    }
+
                     CoroutineScope(Dispatchers.IO).launch {
                         val geo = Geocoder(context, Locale.getDefault())
                         val res = try {
@@ -114,6 +141,7 @@ fun AddCityMapScreen(
                             }
                             mapView.overlays.add(marker)
                             mapView.invalidate()
+                            // afstand is hierboven al gezet; laat staan
                         }
                     }
                 }
@@ -179,6 +207,13 @@ fun AddCityMapScreen(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                distanceText?.let {
+                    Text(
+                        text = "Afstand tot jou: $it",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
 
                 if (error != null) {
                     Text(error ?: "", color = MaterialTheme.colorScheme.error)
@@ -257,4 +292,21 @@ fun AddCityMapScreen(
             }
         }
     }
+}
+
+private fun calculateDistanceKm(
+    lat1: Double,
+    lon1: Double,
+    lat2: Double,
+    lon2: Double
+): Double {
+    val r = 6371.0 // aardstraal in km
+    val dLat = Math.toRadians(lat2 - lat1)
+    val dLon = Math.toRadians(lon2 - lon1)
+    val a = sin(dLat / 2).pow(2.0) +
+            cos(Math.toRadians(lat1)) *
+            cos(Math.toRadians(lat2)) *
+            sin(dLon / 2).pow(2.0)
+    val c = 2 * atan2(kotlin.math.sqrt(a), kotlin.math.sqrt(1 - a))
+    return r * c
 }
