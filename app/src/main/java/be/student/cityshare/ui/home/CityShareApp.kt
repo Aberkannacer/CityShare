@@ -13,6 +13,7 @@ import be.student.cityshare.ui.auth.LoginScreen
 import be.student.cityshare.ui.auth.RegisterScreen
 import be.student.cityshare.ui.cities.AddCityScreen
 import be.student.cityshare.ui.cities.CitiesScreen
+import be.student.cityshare.ui.cities.AddCityMapScreen
 import be.student.cityshare.ui.places.CityDetailScreen
 import be.student.cityshare.ui.home.HomeScreen
 import be.student.cityshare.ui.map.OsmdroidWorldMapScreen
@@ -176,7 +177,7 @@ fun CityShareApp() {
 
         composable("cities") {
             CitiesScreen(
-                onAddCity = { navController.navigate("add_city") },
+                onAddCity = { navController.navigate("add_city_map") },
                 onBack = { navController.popBackStack() },
                 onCityClick = { city ->
                     val encodedName = URLEncoder.encode(city.name, "UTF-8")
@@ -210,6 +211,13 @@ fun CityShareApp() {
             AddCityScreen(
                 onSaved = { navController.popBackStack() },
                 onCancel = { navController.popBackStack() }
+            )
+        }
+
+        composable("add_city_map") {
+            AddCityMapScreen(
+                onBack = { navController.popBackStack() },
+                onSaved = { navController.popBackStack() }
             )
         }
 
