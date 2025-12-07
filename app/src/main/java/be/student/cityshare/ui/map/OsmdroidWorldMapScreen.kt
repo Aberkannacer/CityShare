@@ -4,6 +4,7 @@ import android.Manifest
 import android.widget.Toast
 import android.content.pm.PackageManager
 import android.location.Location
+import android.location.Geocoder
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -42,6 +43,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
@@ -51,7 +53,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
-import be.student.cityshare.model.SavedPlace
 import be.student.cityshare.model.TripReview
 import be.student.cityshare.ui.places.PlacesViewModel
 import be.student.cityshare.ui.trips.TripsViewModel
@@ -67,15 +68,15 @@ import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.MapEventsOverlay
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.TextButton
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.foundation.layout.heightIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import be.student.cityshare.model.Trip
 
 @Composable
 fun OsmdroidWorldMapScreen(
@@ -84,7 +85,6 @@ fun OsmdroidWorldMapScreen(
     tripsViewModel: TripsViewModel
 ) {
     val context = LocalContext.current
-    val places by placesViewModel.places.collectAsState()
     val trips by tripsViewModel.trips.collectAsState()
 
     var selectedCategories by remember { mutableStateOf<Set<String>>(emptySet()) }
@@ -97,6 +97,53 @@ fun OsmdroidWorldMapScreen(
         Location("default").apply {
             latitude = 51.2303
             longitude = 4.4092
+        }
+    }
+
+    val filteredTrips = trips.filter { trip ->
+        val matchesCategory =
+            selectedCategories.isEmpty() || trip.category in selectedCategories
+        val matchesCity = cityQuery.isBlank() ||
+                (trip.cityName.contains(cityQuery, ignoreCase = true)) ||
+                (trip.address.contains(cityQuery, ignoreCase = true))
+        matchesCategory && matchesCity
+    }
+
+    val tripPins by produceState(initialValue = emptyList<TripPin>(), key1 = filteredTrips, key2 = context) {
+        value = withContext(Dispatchers.IO) {
+            val geo = Geocoder(context, java.util.Locale.getDefault())
+            filteredTrips.mapNotNull { trip ->
+                val latLng = when {
+                    trip.latitude != 0.0 || trip.longitude != 0.0 -> trip.latitude to trip.longitude
+                    trip.address.isNotBlank() -> {
+                        try {
+                            val res = geo.getFromLocationName(trip.address, 1)
+                            val loc = res?.firstOrNull()
+                            if (loc != null) loc.latitude to loc.longitude else null
+                        } catch (_: Exception) {
+                            null
+                        }
+                    }
+                    trip.cityName.isNotBlank() -> {
+                        try {
+                            val res = geo.getFromLocationName(trip.cityName, 1)
+                            val loc = res?.firstOrNull()
+                            if (loc != null) loc.latitude to loc.longitude else null
+                        } catch (_: Exception) {
+                            null
+                        }
+                    }
+                    else -> null
+                }
+                latLng?.let { (lat, lng) ->
+                    TripPin(
+                        id = trip.id,
+                        title = trip.cityName.ifBlank { "Trip" },
+                        lat = lat,
+                        lng = lng
+                    )
+                }
+            }
         }
     }
 
@@ -174,28 +221,8 @@ fun OsmdroidWorldMapScreen(
         }
     }
 
-    val filteredPlaces = places.filter { place ->
-        val matchesCategory =
-            selectedCategories.isEmpty() || place.category in selectedCategories
-        val matchesCity = cityQuery.isBlank() ||
-                (place.cityName?.contains(cityQuery, ignoreCase = true) == true) ||
-                (place.address?.contains(cityQuery, ignoreCase = true) == true)
-        matchesCategory && matchesCity
-    }
-    val filteredTrips = trips.filter { trip ->
-        val matchesCategory =
-            selectedCategories.isEmpty() || trip.category in selectedCategories
-        val matchesCity = cityQuery.isBlank() ||
-                (trip.cityName.contains(cityQuery, ignoreCase = true)) ||
-                (trip.address.contains(cityQuery, ignoreCase = true))
-        matchesCategory && matchesCity
-    }
-
-    LaunchedEffect(mapView, filteredPlaces) {
-        updateOsmdroidMarkers(mapView, filteredPlaces, navController)
-    }
-    LaunchedEffect(mapView, filteredTrips) {
-        updateTripMarkers(mapView, filteredTrips, navController)
+    LaunchedEffect(mapView, tripPins) {
+        updateTripMarkers(mapView, tripPins, navController)
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -248,7 +275,7 @@ fun OsmdroidWorldMapScreen(
                     singleLine = true,
                     keyboardActions = KeyboardActions(
                         onDone = {
-                            moveToFirstResult(filteredPlaces, mapView)
+                            moveToFirstResult(filteredTrips, mapView)
                             keyboardController?.hide()
                         }
                     ),
@@ -259,7 +286,7 @@ fun OsmdroidWorldMapScreen(
                 Spacer(modifier = Modifier.height(8.dp))
                 Button(
                     onClick = {
-                        moveToFirstResult(filteredPlaces, mapView)
+                        moveToFirstResult(filteredTrips, mapView)
                         keyboardController?.hide()
                     },
                     modifier = Modifier.align(Alignment.End)
@@ -281,16 +308,17 @@ fun OsmdroidWorldMapScreen(
                     .fillMaxWidth()
                     .padding(8.dp)
             ) {
-                Text("Gefilterde plaatsen", style = MaterialTheme.typography.titleMedium)
+                Text("Trips", style = MaterialTheme.typography.titleMedium)
                 Spacer(modifier = Modifier.size(4.dp))
-                if (filteredTrips.isNotEmpty()) {
-                    Text("Trips", style = MaterialTheme.typography.titleSmall)
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(max = 220.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 220.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (filteredTrips.isEmpty()) {
+                        item { Text("Geen trips in deze filter.") }
+                    } else {
                         items(filteredTrips) { trip ->
                             TripListRow(trip = trip, onClick = {
                                 if (trip.id.isNotBlank()) {
@@ -299,33 +327,14 @@ fun OsmdroidWorldMapScreen(
                             })
                         }
                     }
-                    Spacer(modifier = Modifier.size(8.dp))
-                }
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 220.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    if (filteredPlaces.isEmpty()) {
-                        item { Text("Geen plaatsen in deze filter.") }
-                    } else {
-                        items(filteredPlaces) { place ->
-                            PlaceListRow(
-                                place = place,
-                                userLocation = userLocation,
-                                onClick = { navController.navigate("place_detail/${place.id}") }
-                            )
-                        }
-                    }
                 }
             }
         }
 
         if (showFilterDialog) {
-            val categories = remember(places) {
+            val categories = remember(filteredTrips) {
                 listOf("Alle categorieën") +
-                        places.map { it.category }.distinct().sorted()
+                        filteredTrips.map { it.category }.distinct().sorted()
             }
 
             AlertDialog(
@@ -398,43 +407,33 @@ fun OsmdroidWorldMapScreen(
     }
 }
 
-private fun updateOsmdroidMarkers(
-    mapView: MapView,
-    places: List<SavedPlace>,
-    navController: NavController
-) {
-    mapView.overlays.removeAll { it is Marker && it.snippet != "trip_marker" }
-
-    places.forEach { place ->
-        val marker = Marker(mapView).apply {
-            position = GeoPoint(place.latitude, place.longitude)
-            title = place.title
-            snippet = place.category
-            setOnMarkerClickListener { _, _ ->
-                val city = URLEncoder.encode(place.cityName ?: "", "UTF-8")
-                val address = URLEncoder.encode(place.address ?: "", "UTF-8")
-                navController.navigate("add_trip_prefill/$city/$address")
-                true
-            }
+@Composable
+private fun TripListRow(trip: Trip, onClick: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(8.dp)
+    ) {
+        Text(trip.cityName.ifBlank { "Trip" }, style = MaterialTheme.typography.titleSmall)
+        Text(trip.category, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+        if (trip.address.isNotBlank()) {
+            Text(trip.address, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        mapView.overlays.add(marker)
     }
-
-    mapView.invalidate()
 }
 
 private fun updateTripMarkers(
     mapView: MapView,
-    trips: List<be.student.cityshare.model.Trip>,
+    trips: List<TripPin>,
     navController: NavController
 ) {
     mapView.overlays.removeAll { it is Marker && it.snippet == "trip_marker" }
 
     trips.forEach { trip ->
-        if (trip.latitude == 0.0 && trip.longitude == 0.0) return@forEach
         val marker = Marker(mapView).apply {
-            position = GeoPoint(trip.latitude, trip.longitude)
-            title = trip.cityName.ifBlank { "Trip" }
+            position = GeoPoint(trip.lat, trip.lng)
+            title = trip.title
             snippet = "trip_marker"
             setOnMarkerClickListener { _, _ ->
                 if (trip.id.isNotBlank()) {
@@ -449,58 +448,21 @@ private fun updateTripMarkers(
     mapView.invalidate()
 }
 
-private fun moveToFirstResult(places: List<SavedPlace>, mapView: MapView) {
-    val target = places.firstOrNull() ?: return
+private data class TripPin(
+    val id: String,
+    val title: String,
+    val lat: Double,
+    val lng: Double
+)
+
+private fun moveToFirstResult(trips: List<Trip>, mapView: MapView) {
+    val target = trips.firstOrNull { it.latitude != 0.0 || it.longitude != 0.0 }
+        ?: trips.firstOrNull()
+        ?: return
+
+    val lat = if (target.latitude == 0.0) 51.2194 else target.latitude
+    val lng = if (target.longitude == 0.0) 4.4025 else target.longitude
+
     mapView.controller.setZoom(13.0)
-    mapView.controller.animateTo(GeoPoint(target.latitude, target.longitude))
-}
-
-@Composable
-private fun PlaceListRow(place: SavedPlace, userLocation: Location?, onClick: () -> Unit) {
-    val hasCoords = place.latitude != 0.0 || place.longitude != 0.0
-    val distanceText = if (userLocation != null && hasCoords) {
-        val result = FloatArray(1)
-        Location.distanceBetween(
-            userLocation.latitude, userLocation.longitude,
-            place.latitude, place.longitude,
-            result
-        )
-        val km = result[0] / 1000f
-        String.format("%.1f km", km)
-    } else null
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(8.dp)
-    ) {
-        Text(place.title, style = MaterialTheme.typography.titleSmall)
-        Text(place.category, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-
-        distanceText?.let {
-            Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-
-        if (place.rating > 0) {
-            Row {
-                (1..5).forEach { i ->
-                    Icon(
-                        imageVector = if (i <= place.rating) Icons.Filled.Star else Icons.Filled.StarBorder,
-                        contentDescription = null,
-                        tint = if (i <= place.rating) Color(0xFFFFC107) else Color.Gray,
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-            }
-        }
-
-        if (place.comment.isNotBlank()) {
-            Text(
-                text = place.comment,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
+    mapView.controller.animateTo(GeoPoint(lat, lng))
 }

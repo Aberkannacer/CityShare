@@ -24,6 +24,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
+import android.location.Geocoder
+import android.location.Location
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -34,7 +36,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.platform.LocalContext
 import be.student.cityshare.model.TripReview
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,6 +48,7 @@ fun TripDetailScreen(
     tripsViewModel: TripsViewModel,
     onBack: () -> Unit
 ) {
+    val context = LocalContext.current
     val trips by tripsViewModel.trips.collectAsState()
     val userMap by tripsViewModel.userMap.collectAsState()
     val trip = trips.find { it.id == tripId }
@@ -51,11 +57,13 @@ fun TripDetailScreen(
 
     var rating by remember { mutableStateOf(0) }
     var comment by remember { mutableStateOf("") }
+    var distanceKm by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(trip) {
         trip?.let {
             rating = it.rating
             comment = it.comment
+            distanceKm = computeDistance(context, it)
         }
     }
 
@@ -94,6 +102,9 @@ fun TripDetailScreen(
 
             if (trip.address.isNotBlank()) {
                 Text(text = trip.address, style = MaterialTheme.typography.bodyMedium)
+            }
+            distanceKm?.let { km ->
+                Text(text = "Afstand vanaf Ellermanstraat 33: $km km", style = MaterialTheme.typography.bodyMedium)
             }
             if (trip.notes.isNotBlank()) {
                 Text(text = trip.notes, style = MaterialTheme.typography.bodyMedium)
@@ -178,4 +189,39 @@ private fun ReviewItem(review: TripReview, fallbackName: String) {
             Text(text = review.comment, style = MaterialTheme.typography.bodyMedium)
         }
     }
+}
+
+private suspend fun computeDistance(context: android.content.Context, trip: be.student.cityshare.model.Trip): String? {
+    val startLat = 51.2303
+    val startLng = 4.4092
+    var targetLat = trip.latitude
+    var targetLng = trip.longitude
+
+    if (targetLat == 0.0 && targetLng == 0.0) {
+        val geocoder = Geocoder(context, java.util.Locale.getDefault())
+        val addressToGeocode = when {
+            trip.address.isNotBlank() -> trip.address
+            trip.cityName.isNotBlank() -> trip.cityName
+            else -> null
+        }
+        if (addressToGeocode != null) {
+            try {
+                val res = withContext(Dispatchers.IO) { geocoder.getFromLocationName(addressToGeocode, 1) }
+                val loc = res?.firstOrNull()
+                if (loc != null) {
+                    targetLat = loc.latitude
+                    targetLng = loc.longitude
+                }
+            } catch (_: Exception) {
+                // ignore and fall through to unknown distance
+            }
+        }
+    }
+
+    if (targetLat == 0.0 && targetLng == 0.0) return null
+
+    val results = FloatArray(1)
+    Location.distanceBetween(startLat, startLng, targetLat, targetLng, results)
+    val km = results.firstOrNull()?.div(1000) ?: return null
+    return String.format(java.util.Locale.getDefault(), "%.1f", km)
 }

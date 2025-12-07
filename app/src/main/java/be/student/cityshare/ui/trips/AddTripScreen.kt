@@ -50,6 +50,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -169,7 +171,10 @@ fun AddTripScreen(
                         modifier = Modifier.fillMaxWidth(),
                         label = { Text("Locatie of adres") },
                         placeholder = { Text("Bijv. Amphitheatre Parkway, Mountain View") },
-                        singleLine = true
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions.Default.copy(
+                            imeAction = ImeAction.Next
+                        )
                     )
 
                     OutlinedTextField(
@@ -285,6 +290,10 @@ fun AddTripScreen(
             Button(
                 onClick = {
                     error = null
+                    if (address.isBlank()) {
+                        error = "Adres is verplicht"
+                        return@Button
+                    }
                     tripsViewModel.saveTrip(
                         context = context,
                         city = selectedCity,

@@ -18,6 +18,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.util.UUID
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.util.Locale
 
 data class CityOption(
     val id: String,
@@ -203,6 +206,11 @@ class TripsViewModel : ViewModel() {
             return
         }
 
+        if (address.isBlank()) {
+            onError("Adres is verplicht.")
+            return
+        }
+
         if (city == null && cityNameOverride.isNullOrBlank()) {
             onError("Kies eerst een stad.")
             return
@@ -219,7 +227,7 @@ class TripsViewModel : ViewModel() {
                 val id = UUID.randomUUID().toString()
                 val imageBase64 = imageUri?.let { uriToBase64(context, it) }
 
-                val (geoLat, geoLng, geoCity, geoCountry) = geocodeAddress(context, address)
+                val (geoLat, geoLng, geoCity, geoCountry) = geocodeAddress(context, address, city?.name ?: cityNameOverride)
 
                 val finalCity = city
                     ?: createCityIfMissing(cityNameOverride!!, userId, geoCountry ?: "")
@@ -300,13 +308,21 @@ class TripsViewModel : ViewModel() {
         return createCityIfMissing(name, userId, country)
     }
 
-    private suspend fun geocodeAddress(context: Context, addr: String): Quadruple<Double?, Double?, String?, String?> {
+    private suspend fun geocodeAddress(context: Context, addr: String, fallbackCity: String? = null): Quadruple<Double?, Double?, String?, String?> {
         return withContext(Dispatchers.IO) {
             try {
                 val geo = android.location.Geocoder(context, Locale.getDefault())
                 val res = geo.getFromLocationName(addr, 1)
                 val loc = res?.firstOrNull()
-                Quadruple(loc?.latitude, loc?.longitude, loc?.locality ?: loc?.subAdminArea, loc?.countryName)
+                if (loc != null) {
+                    Quadruple(loc.latitude, loc.longitude, loc.locality ?: loc.subAdminArea, loc.countryName)
+                } else if (!fallbackCity.isNullOrBlank()) {
+                    val resCity = geo.getFromLocationName(fallbackCity, 1)
+                    val locCity = resCity?.firstOrNull()
+                    Quadruple(locCity?.latitude, locCity?.longitude, locCity?.locality ?: locCity?.subAdminArea, locCity?.countryName)
+                } else {
+                    Quadruple(null, null, null, null)
+                }
             } catch (_: Exception) {
                 Quadruple(null, null, null, null)
             }
