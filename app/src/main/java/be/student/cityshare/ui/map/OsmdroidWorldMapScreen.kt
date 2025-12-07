@@ -172,10 +172,25 @@ fun OsmdroidWorldMapScreen(
         MapEventsOverlay(object : MapEventsReceiver {
             override fun singleTapConfirmedHelper(p: GeoPoint?): Boolean {
                 val now = System.currentTimeMillis()
+                val distanceText = p?.let { point ->
+                    val results = FloatArray(1)
+                    Location.distanceBetween(
+                        userLocation.latitude,
+                        userLocation.longitude,
+                        point.latitude,
+                        point.longitude,
+                        results
+                    )
+                    val km = results.firstOrNull()?.div(1000) ?: 0f
+                    "Afstand vanaf Ellermanstraat 33: ${"%.1f".format(java.util.Locale.getDefault(), km)} km"
+                }
 
                 if (now - lastTapTime.value < 1500 && p != null) {
                     val lat = p.latitude
                     val lng = p.longitude
+                    distanceText?.let {
+                        Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+                    }
                     // Resolve address/city in background and navigate once (simplified: best-effort)
                     scope.launch {
                         val geo = android.location.Geocoder(context, java.util.Locale.getDefault())
@@ -197,11 +212,11 @@ fun OsmdroidWorldMapScreen(
                     lastTapTime.value = 0L
                 } else {
                     lastTapTime.value = now
-                    Toast.makeText(
-                        context,
-                        "Tik nog een keer om hier een plaats toe te voegen",
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    val msg = buildString {
+                        distanceText?.let { append(it).append("\n") }
+                        append("Tik nog een keer om hier een plaats toe te voegen")
+                    }
+                    Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
                 }
 
                 return true
