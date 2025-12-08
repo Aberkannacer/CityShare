@@ -61,6 +61,7 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)
     implementation(libs.firebase.firestore)
+    implementation("com.google.firebase:firebase-messaging")
     implementation("androidx.navigation:navigation-compose:2.8.4")
     implementation("org.maplibre.gl:android-sdk:11.1.0")
     implementation("com.google.android.gms:play-services-location:21.3.0")

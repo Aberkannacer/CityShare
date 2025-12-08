@@ -13,3 +13,5 @@
 .externalNativeBuild
 .cxx
 local.properties
+cityshare-dc0b2-*.json
+service-account.json

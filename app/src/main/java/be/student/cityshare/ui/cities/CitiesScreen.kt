@@ -11,9 +11,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Message
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -33,6 +36,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.unit.dp
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
@@ -52,7 +56,8 @@ fun CitiesScreen(
     onCityClick: (City) -> Unit,
     onLogout: () -> Unit,
     onOpenMap: () -> Unit,
-    onOpenChat: () -> Unit
+    onOpenChat: () -> Unit,
+    unreadCount: Int
 ) {
     var cities by remember { mutableStateOf(listOf<City>()) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -87,8 +92,20 @@ fun CitiesScreen(
             CenterAlignedTopAppBar(
                 title = { Text("Steden") },
                 actions = {
-                    IconButton(onClick = onOpenMap) { Icon(Icons.Default.Map, contentDescription = "Kaart") }
-                    IconButton(onClick = onOpenChat) { Icon(Icons.Default.Message, contentDescription = "Chat") }
+                    IconButton(onClick = onOpenMap) {
+                        Icon(Icons.Default.Map, contentDescription = "Kaart")
+                    }
+                    BadgedBox(
+                        badge = {
+                            if (unreadCount > 0) {
+                                Badge { Text(unreadCount.coerceAtMost(99).toString()) }
+                            }
+                        }
+                    ) {
+                        IconButton(onClick = onOpenChat) {
+                            Icon(Icons.Default.Message, contentDescription = "Chat")
+                        }
+                    }
                     TextButton(onClick = onLogout) { Text("Logout") }
                 }
             )
@@ -119,7 +136,10 @@ fun CitiesScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                OutlinedButton(onClick = onAddCity) { Text("Nieuwe stad") }
+                OutlinedButton(
+                    onClick = onAddCity,
+                    modifier = Modifier.shadow(0.dp, CircleShape)
+                ) { Text("Nieuwe stad") }
             }
 
             OutlinedTextField(

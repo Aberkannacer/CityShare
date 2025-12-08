@@ -4,9 +4,18 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import be.student.cityshare.model.Message
 import be.student.cityshare.model.User
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.content.Context
+import android.app.PendingIntent
+import android.content.Intent
+import android.os.Build
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.Query
+import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -43,6 +52,7 @@ class MessagingViewModel : ViewModel() {
 
     private var unreadListener: ListenerRegistration? = null
     private var messagesListener: ListenerRegistration? = null
+    private var notificationListener: ListenerRegistration? = null
 
     init {
         fetchAllUsers()
@@ -57,6 +67,7 @@ class MessagingViewModel : ViewModel() {
     private fun resetState() {
         unreadListener?.remove()
         messagesListener?.remove()
+        notificationListener?.remove()
         _messages.value = emptyList()
         _unreadFrom.value = emptySet()
         _hasUnreadMessages.value = false
@@ -91,6 +102,51 @@ class MessagingViewModel : ViewModel() {
             }
     }
 
+    fun startMessageNotifications(context: Context) {
+        if (currentUserId == null) return
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                "chat_messages",
+                "Chatberichten",
+                NotificationManager.IMPORTANCE_DEFAULT
+            )
+            val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            nm.createNotificationChannel(channel)
+        }
+        notificationListener?.remove()
+        notificationListener = db.collectionGroup("messages")
+            .whereEqualTo("receiverId", currentUserId)
+            .addSnapshotListener { snapshot, _ ->
+                val docs = snapshot?.documents.orEmpty()
+                docs.filter { it.getBoolean("isRead") != true }
+                    .forEach { doc ->
+                        val senderId = doc.getString("senderId") ?: return@forEach
+                        if (senderId == currentUserId) return@forEach
+                        val text = doc.getString("text") ?: ""
+                        val senderName = _userMap.value[senderId] ?: "Nieuw bericht"
+                        val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+                        val pendingIntent = launchIntent?.let {
+                            PendingIntent.getActivity(
+                                context,
+                                doc.id.hashCode(),
+                                it,
+                                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                            )
+                        }
+                        val notification = NotificationCompat.Builder(context, "chat_messages")
+                            .setSmallIcon(android.R.drawable.ic_dialog_email)
+                            .setContentTitle(senderName)
+                            .setContentText(text.take(50))
+                            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                            .setContentIntent(pendingIntent)
+                            .setAutoCancel(true)
+                            .build()
+                        NotificationManagerCompat.from(context)
+                            .notify(doc.id.hashCode(), notification)
+                    }
+            }
+    }
+
     fun loadMessages(conversationId: String) {
         messagesListener?.remove()
         messagesListener = db.collection("conversations").document(conversationId)
@@ -113,6 +169,22 @@ class MessagingViewModel : ViewModel() {
         )
         db.collection("conversations").document(conversationId)
             .collection("messages").add(message)
+    }
+
+    fun ensureFcmToken() {
+        val uid = currentUserId ?: return
+        FirebaseMessaging.getInstance().token.addOnSuccessListener { token ->
+            if (token.isNullOrBlank()) return@addOnSuccessListener
+            db.collection("users").document(uid)
+                .update("fcmTokens", com.google.firebase.firestore.FieldValue.arrayUnion(token))
+                .addOnFailureListener {
+                    // fallback: create doc if missing
+                    db.collection("users").document(uid).set(
+                        mapOf("fcmTokens" to listOf(token)),
+                        com.google.firebase.firestore.SetOptions.merge()
+                    )
+                }
+        }
     }
 
     fun markMessagesAsRead(conversationId: String, otherUserId: String) {
@@ -139,5 +211,6 @@ class MessagingViewModel : ViewModel() {
         super.onCleared()
         unreadListener?.remove()
         messagesListener?.remove()
+        notificationListener?.remove()
     }
 }

@@ -1,8 +1,11 @@
 package be.student.cityshare
 
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import android.Manifest
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -40,10 +43,33 @@ fun CityShareApp() {
     val placesViewModel: PlacesViewModel = viewModel()
     val tripsViewModel: TripsViewModel = viewModel()
     val messagingViewModel: MessagingViewModel = viewModel()
+    val appContext = LocalContext.current.applicationContext
 
     val hasUnreadMessages by messagingViewModel.hasUnreadMessages.collectAsState()
+    val unreadFrom by messagingViewModel.unreadFrom.collectAsState()
+    var notificationPrompted by remember { mutableStateOf(false) }
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { /* no-op */ }
+    )
 
     val startDestination = if (Firebase.auth.currentUser != null) "cities" else "login"
+
+    val currentUserId = Firebase.auth.currentUser?.uid
+
+    LaunchedEffect(currentUserId) {
+        if (currentUserId != null) {
+            messagingViewModel.startMessageNotifications(appContext)
+            messagingViewModel.ensureFcmToken()
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !notificationPrompted) {
+            notificationPrompted = true
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
 
     NavHost(
         navController = navController,
@@ -211,7 +237,8 @@ fun CityShareApp() {
                     }
                 },
                 onOpenMap = { navController.navigate("map") },
-                onOpenChat = { navController.navigate("user_list") }
+                onOpenChat = { navController.navigate("user_list") },
+                unreadCount = unreadFrom.size
             )
         }
 
