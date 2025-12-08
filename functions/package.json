@@ -1,0 +1,10 @@
+{
+  "name": "cityshare-functions",
+  "engines": {
+    "node": "18"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.5.0",
+    "firebase-functions": "^4.5.0"
+  }
+}
