@@ -70,6 +70,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import android.location.Geocoder
 import android.widget.Toast
+import android.graphics.Bitmap
+import java.io.File
+import java.io.FileOutputStream
 import java.util.Locale
 import org.osmdroid.config.Configuration
 import org.osmdroid.events.MapEventsReceiver
@@ -114,6 +117,13 @@ fun AddTripScreen(
     val pickImage = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri -> imageUri = uri }
+    val takePhoto = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicturePreview()
+    ) { bitmap ->
+        if (bitmap != null) {
+            imageUri = saveBitmapToCache(context, bitmap)
+        }
+    }
 
     LaunchedEffect(cities) {
         if (prefillCity != null) {
@@ -270,16 +280,26 @@ fun AddTripScreen(
                             fontWeight = FontWeight.SemiBold
                         )
 
-                        Button(
-                            onClick = { pickImage.launch("image/*") },
-                            enabled = !saving,
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primary
-                            )
-                        ) {
-                            Icon(Icons.Default.CameraAlt, contentDescription = null)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Neem of kies een foto")
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            OutlinedButton(
+                                onClick = { takePhoto.launch(null) },
+                                enabled = !saving
+                            ) {
+                                Icon(Icons.Default.CameraAlt, contentDescription = null)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Neem foto")
+                            }
+                            Button(
+                                onClick = { pickImage.launch("image/*") },
+                                enabled = !saving,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary
+                                )
+                            ) {
+                                Icon(Icons.Default.FlightTakeoff, contentDescription = null)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Kies foto")
+                            }
                         }
 
                         Surface(
@@ -377,6 +397,18 @@ fun AddTripScreen(
                 }
             )
         }
+    }
+}
+
+private fun saveBitmapToCache(context: android.content.Context, bitmap: Bitmap): Uri? {
+    return try {
+        val file = File.createTempFile("trip_photo_", ".jpg", context.cacheDir)
+        FileOutputStream(file).use { out ->
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
+        }
+        Uri.fromFile(file)
+    } catch (_: Exception) {
+        null
     }
 }
 

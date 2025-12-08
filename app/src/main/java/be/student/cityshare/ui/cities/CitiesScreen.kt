@@ -1,21 +1,42 @@
 package be.student.cityshare.ui.cities
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Message
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.google.firebase.firestore.Query
-import com.google.firebase.firestore.QuerySnapshot
-import com.google.firebase.firestore.FirebaseFirestoreException
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FirebaseFirestoreException
+import com.google.firebase.firestore.QuerySnapshot
 
 data class City(
     val id: String = "",
@@ -35,6 +56,7 @@ fun CitiesScreen(
 ) {
     var cities by remember { mutableStateOf(listOf<City>()) }
     var error by remember { mutableStateOf<String?>(null) }
+    var query by remember { mutableStateOf("") }
 
     DisposableEffect(Unit) {
         val registration = FirebaseFirestore.getInstance().collection("cities")
@@ -53,8 +75,11 @@ fun CitiesScreen(
                 }?.sortedBy { it.name.lowercase() } ?: emptyList()
                 cities = items
             }
-
         onDispose { registration.remove() }
+    }
+
+    val filtered = cities.filter {
+        query.isBlank() || it.name.contains(query, ignoreCase = true) || it.country.contains(query, ignoreCase = true)
     }
 
     Scaffold(
@@ -67,37 +92,56 @@ fun CitiesScreen(
                     TextButton(onClick = onLogout) { Text("Logout") }
                 }
             )
-        },
-        floatingActionButton = {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 16.dp, bottom = 16.dp),
-                contentAlignment = Alignment.BottomStart
-            ) {
-                FloatingActionButton(onClick = onAddCity) {
-                    Icon(Icons.Default.Add, contentDescription = "Toevoegen")
-                }
-            }
-        },
-        floatingActionButtonPosition = FabPosition.Start
+        }
     ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(16.dp)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             if (error != null) {
                 Text(error!!, color = MaterialTheme.colorScheme.error)
                 Spacer(Modifier.height(8.dp))
             }
 
-            if (cities.isEmpty()) {
-                Text("Nog geen steden. Voeg er eentje toe!")
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text("Ontdek steden", style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        "Selecteer een stad of voeg er eentje toe",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                OutlinedButton(onClick = onAddCity) { Text("Nieuwe stad") }
+            }
+
+            OutlinedTextField(
+                value = query,
+                onValueChange = { query = it },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Zoek stad of land") },
+                singleLine = true
+            )
+
+            if (filtered.isEmpty()) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Geen steden gevonden.", style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        "Gebruik 'Nieuwe stad' of open de kaart om te verkennen.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             } else {
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(cities) { city ->
+                    items(filtered) { city ->
                         ElevatedCard(
                             modifier = Modifier.fillMaxWidth(),
                             onClick = { onCityClick(city) }
@@ -106,7 +150,7 @@ fun CitiesScreen(
                                 Text(city.name, style = MaterialTheme.typography.titleMedium)
                                 val subtitle = listOf(city.country, city.description)
                                     .filter { it.isNotBlank() }
-                                    .joinToString(" — ")
+                                    .joinToString(" – ")
                                 if (subtitle.isNotBlank()) {
                                     Spacer(Modifier.height(4.dp))
                                     Text(subtitle, style = MaterialTheme.typography.bodyMedium)

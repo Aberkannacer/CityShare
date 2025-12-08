@@ -21,6 +21,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
@@ -48,6 +50,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -78,6 +81,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import be.student.cityshare.model.Trip
 import be.student.cityshare.R
+import kotlin.math.roundToInt
 
 @Composable
 fun OsmdroidWorldMapScreen(
@@ -167,12 +171,9 @@ fun OsmdroidWorldMapScreen(
         }
     }
 
-    val lastTapTime = remember { mutableStateOf(0L) }
-
     val mapTapOverlay = remember {
         MapEventsOverlay(object : MapEventsReceiver {
             override fun singleTapConfirmedHelper(p: GeoPoint?): Boolean {
-                val now = System.currentTimeMillis()
                 val distanceText = p?.let { point ->
                     val results = FloatArray(1)
                     Location.distanceBetween(
@@ -186,39 +187,7 @@ fun OsmdroidWorldMapScreen(
                     "Afstand vanaf Ellermanstraat 33: ${"%.1f".format(java.util.Locale.getDefault(), km)} km"
                 }
 
-                if (now - lastTapTime.value < 1500 && p != null) {
-                    val lat = p.latitude
-                    val lng = p.longitude
-                    distanceText?.let {
-                        Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
-                    }
-                    // Resolve address/city in background and navigate once (simplified: best-effort)
-                    scope.launch {
-                        val geo = android.location.Geocoder(context, java.util.Locale.getDefault())
-                        val res = try {
-                            geo.getFromLocation(lat, lng, 1)
-                        } catch (_: Exception) {
-                            null
-                        }
-                        val cityName = res?.firstOrNull()?.locality ?: res?.firstOrNull()?.subAdminArea ?: ""
-                        val country = res?.firstOrNull()?.countryName ?: ""
-                        val address = res?.firstOrNull()?.getAddressLine(0) ?: ""
-
-                        tripsViewModel.ensureCityExists(cityName.ifBlank { address }, country)
-
-                        val cityEnc = URLEncoder.encode(cityName, "UTF-8")
-                        val addrEnc = URLEncoder.encode(address, "UTF-8")
-                        navController.navigate("add_trip_prefill/$cityEnc/$addrEnc")
-                    }
-                    lastTapTime.value = 0L
-                } else {
-                    lastTapTime.value = now
-                    val msg = buildString {
-                        distanceText?.let { append(it).append("\n") }
-                        append("Tik nog een keer om hier een plaats toe te voegen")
-                    }
-                    Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
-                }
+                distanceText?.let { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
 
                 return true
             }
@@ -238,7 +207,7 @@ fun OsmdroidWorldMapScreen(
     }
 
     LaunchedEffect(mapView, tripPins) {
-        updateTripMarkers(mapView, tripPins, navController)
+        updateTripMarkers(mapView, tripPins, navController, userLocation)
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -263,31 +232,52 @@ fun OsmdroidWorldMapScreen(
             )
         }
 
-        FloatingActionButton(
-            onClick = { showFilterDialog = true },
+        Column(
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .padding(16.dp)
+                .padding(top = 140.dp, end = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Icon(
-                imageVector = Icons.Default.FilterList,
-                contentDescription = "Filter plaatsen"
+            val actions = listOf(
+                MapFab(Icons.Default.FilterList, "Filter trips") { showFilterDialog = true },
+                MapFab(Icons.Default.Add, "Zoom in") { mapView.controller.zoomIn() },
+                MapFab(Icons.Default.Remove, "Zoom uit") { mapView.controller.zoomOut() }
             )
+            actions.forEach { item ->
+                Surface(
+                    tonalElevation = 6.dp,
+                    shape = CircleShape,
+                    color = Color.White
+                ) {
+                    IconButton(
+                        onClick = item.onClick,
+                        modifier = Modifier.size(48.dp)
+                    ) {
+                        Icon(imageVector = item.icon, contentDescription = item.description, tint = Color.Black)
+                    }
+                }
+            }
         }
 
         Surface(
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .padding(top = 72.dp, start = 16.dp, end = 16.dp),
-            tonalElevation = 6.dp
+            tonalElevation = 6.dp,
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp)
         ) {
-            Column(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 OutlinedTextField(
                     value = cityQuery,
                     onValueChange = { cityQuery = it },
-                    modifier = Modifier
-                        .fillMaxWidth(),
-                    label = { Text("Zoek op stad") },
+                    modifier = Modifier.weight(1f),
+                    placeholder = { Text("Zoek stad of adres") },
                     singleLine = true,
                     keyboardActions = KeyboardActions(
                         onDone = {
@@ -301,17 +291,15 @@ fun OsmdroidWorldMapScreen(
                         imeAction = ImeAction.Done
                     )
                 )
-                Spacer(modifier = Modifier.height(8.dp))
                 Button(
                     onClick = {
                         scope.launch {
                             moveToFirstResult(filteredTrips, mapView, context, cityQuery)
                             keyboardController?.hide()
                         }
-                    },
-                    modifier = Modifier.align(Alignment.End)
+                    }
                 ) {
-                    Text("Ga naar stad")
+                    Text("Ga")
                 }
             }
         }
@@ -446,7 +434,8 @@ private fun TripListRow(trip: Trip, onClick: () -> Unit) {
 private fun updateTripMarkers(
     mapView: MapView,
     trips: List<TripPin>,
-    navController: NavController
+    navController: NavController,
+    userLocation: Location
 ) {
     mapView.overlays.removeAll { it is Marker && it.snippet == "trip_marker" }
 
@@ -457,6 +446,16 @@ private fun updateTripMarkers(
             snippet = "trip_marker"
             icon = mapView.context.getDrawable(R.drawable.ic_location_pin)
             setOnMarkerClickListener { _, _ ->
+                val results = FloatArray(1)
+                Location.distanceBetween(
+                    userLocation.latitude,
+                    userLocation.longitude,
+                    trip.lat,
+                    trip.lng,
+                    results
+                )
+                val km = results.firstOrNull()?.div(1000)?.roundToInt() ?: 0
+                Toast.makeText(mapView.context, "Afstand: ${km} km", Toast.LENGTH_SHORT).show()
                 if (trip.id.isNotBlank()) {
                     navController.navigate("trip_detail/${trip.id}")
                 }
@@ -474,6 +473,12 @@ private data class TripPin(
     val title: String,
     val lat: Double,
     val lng: Double
+)
+
+private data class MapFab(
+    val icon: ImageVector,
+    val description: String,
+    val onClick: () -> Unit
 )
 
 private suspend fun moveToFirstResult(

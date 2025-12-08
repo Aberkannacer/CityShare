@@ -209,7 +209,9 @@ fun CityShareApp() {
                     navController.navigate("login") {
                         popUpTo("cities") { inclusive = true }
                     }
-                }
+                },
+                onOpenMap = { navController.navigate("map") },
+                onOpenChat = { navController.navigate("user_list") }
             )
         }
 
