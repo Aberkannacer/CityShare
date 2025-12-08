@@ -79,6 +79,7 @@ import org.osmdroid.views.CustomZoomButtonsController
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.MapEventsOverlay
 import org.osmdroid.views.overlay.Marker
+import be.student.cityshare.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -504,11 +505,13 @@ private fun TripMapPickerOverlay(
                         withContext(Dispatchers.Main) {
                             loading = false
                             error = null
-                            mapView.overlays.removeAll { it is Marker }
-                            val marker = Marker(mapView).apply {
-                                position = p
-                                title = if (cityName.isNotBlank()) cityName else "Locatie"
-                            }
+                        mapView.overlays.removeAll { it is Marker }
+                        val marker = Marker(mapView).apply {
+                            position = p
+                            title = if (cityName.isNotBlank()) cityName else "Locatie"
+                            icon = context.getDrawable(R.drawable.ic_location_pin)
+                            setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                        }
                             mapView.overlays.add(marker)
                             mapView.invalidate()
                             onPointSelected(p, cityName, address)

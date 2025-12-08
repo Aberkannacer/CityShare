@@ -51,6 +51,7 @@ class TripsViewModel : ViewModel() {
     val reviews: StateFlow<Map<String, List<TripReview>>> = _reviews
 
     private var tripsListener: ListenerRegistration? = null
+    private var usersListener: ListenerRegistration? = null
     private val reviewListeners = mutableMapOf<String, ListenerRegistration>()
 
     init {
@@ -58,7 +59,7 @@ class TripsViewModel : ViewModel() {
         listenToCategories()
         listenToTrips()
         auth.addAuthStateListener { listenToTrips() }
-        loadUsers()
+        listenToUsers()
     }
 
     private fun listenToTrips() {
@@ -157,15 +158,15 @@ class TripsViewModel : ViewModel() {
             .update(updates)
     }
 
-    private fun loadUsers() {
-        db.collection("users")
-            .get()
-            .addOnSuccessListener { result ->
-                val map = result.documents.associate { doc ->
+    private fun listenToUsers() {
+        usersListener?.remove()
+        usersListener = db.collection("users")
+            .addSnapshotListener { result, _ ->
+                val map = result?.documents?.associate { doc ->
                     val uid = doc.getString("uid") ?: doc.id
                     val name = doc.getString("displayName") ?: doc.getString("email") ?: "Onbekende gebruiker"
                     uid to name
-                }
+                } ?: emptyMap()
                 _userMap.value = map
             }
     }

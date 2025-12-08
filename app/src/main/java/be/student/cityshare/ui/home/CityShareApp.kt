@@ -63,7 +63,7 @@ fun CityShareApp() {
         composable("register") {
             RegisterScreen(
                 onRegistered = {
-                    navController.navigate("home") {
+                    navController.navigate("cities") {
                         popUpTo("login") { inclusive = true }
                     }
                 },
@@ -228,9 +228,6 @@ fun CityShareApp() {
                 cityId = cityId,
                 cityName = cityName,
                 onBack = { navController.popBackStack() },
-                onPlaceClick = { place ->
-                    navController.navigate("place_detail/${place.id}")
-                },
                 onTripClick = { tripId ->
                     navController.navigate("trip_detail/$tripId")
                 },

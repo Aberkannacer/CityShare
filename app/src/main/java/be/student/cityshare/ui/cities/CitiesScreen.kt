@@ -5,7 +5,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.Message
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -15,8 +16,6 @@ import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.QuerySnapshot
 import com.google.firebase.firestore.FirebaseFirestoreException
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.auth.ktx.auth
-import com.google.firebase.ktx.Firebase
 
 data class City(
     val id: String = "",
@@ -30,37 +29,32 @@ data class City(
 fun CitiesScreen(
     onAddCity: () -> Unit,
     onCityClick: (City) -> Unit,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    onOpenMap: () -> Unit,
+    onOpenChat: () -> Unit
 ) {
     var cities by remember { mutableStateOf(listOf<City>()) }
     var error by remember { mutableStateOf<String?>(null) }
-    val userId = Firebase.auth.currentUser?.uid
 
-    DisposableEffect(userId) {
-        if (userId == null) {
-            cities = emptyList()
-            onDispose { }
-        } else {
-            val registration = FirebaseFirestore.getInstance().collection("cities")
-                .whereEqualTo("createdBy", userId)
-                .addSnapshotListener { snap: QuerySnapshot?, e: FirebaseFirestoreException? ->
-                    if (e != null) {
-                        error = e.message
-                        return@addSnapshotListener
-                    }
-                    val items = snap?.documents?.map { doc ->
-                        City(
-                            id = doc.id,
-                            name = doc.getString("name") ?: "",
-                            country = doc.getString("country") ?: "",
-                            description = doc.getString("description") ?: ""
-                        )
-                    }?.sortedBy { it.name.lowercase() } ?: emptyList()
-                    cities = items
+    DisposableEffect(Unit) {
+        val registration = FirebaseFirestore.getInstance().collection("cities")
+            .addSnapshotListener { snap: QuerySnapshot?, e: FirebaseFirestoreException? ->
+                if (e != null) {
+                    error = e.message
+                    return@addSnapshotListener
                 }
+                val items = snap?.documents?.map { doc ->
+                    City(
+                        id = doc.id,
+                        name = doc.getString("name") ?: "",
+                        country = doc.getString("country") ?: "",
+                        description = doc.getString("description") ?: ""
+                    )
+                }?.sortedBy { it.name.lowercase() } ?: emptyList()
+                cities = items
+            }
 
-            onDispose { registration.remove() }
-        }
+        onDispose { registration.remove() }
     }
 
     Scaffold(
@@ -68,12 +62,9 @@ fun CitiesScreen(
             CenterAlignedTopAppBar(
                 title = { Text("Steden") },
                 actions = {
-                    IconButton(onClick = onLogout) {
-                        Icon(
-                            imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Uitloggen"
-                        )
-                    }
+                    IconButton(onClick = onOpenMap) { Icon(Icons.Default.Map, contentDescription = "Kaart") }
+                    IconButton(onClick = onOpenChat) { Icon(Icons.Default.Message, contentDescription = "Chat") }
+                    TextButton(onClick = onLogout) { Text("Logout") }
                 }
             )
         },

@@ -38,6 +38,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import be.student.cityshare.R
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
@@ -146,6 +147,8 @@ fun AddCityMapScreen(
                             val marker = Marker(mapView).apply {
                                 position = p
                                 title = selectedLabel
+                                icon = context.getDrawable(R.drawable.ic_location_pin)
+                                setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
                             }
                             mapView.overlays.add(marker)
                             mapView.invalidate()

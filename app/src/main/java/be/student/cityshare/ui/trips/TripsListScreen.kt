@@ -46,9 +46,7 @@ fun TripsListScreen(
 ) {
     val trips by tripsViewModel.trips.collectAsState()
     val userMap by tripsViewModel.userMap.collectAsState()
-    val userId = Firebase.auth.currentUser?.uid
-    val myTrips = trips.filter { it.userId == userId }
-    val otherTrips = trips.filter { it.userId != userId && (it.rating > 0 || it.comment.isNotBlank()) }
+    val sortedTrips = trips.sortedBy { it.cityName.lowercase() }
 
     Scaffold(
         topBar = {
@@ -77,12 +75,12 @@ fun TripsListScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            if (myTrips.isEmpty()) {
+            if (sortedTrips.isEmpty()) {
                 item {
                     Column(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text("Nog geen trips opgeslagen.")
+                        Text("Nog geen trips gevonden.")
                         OutlinedButton(onClick = onAddTrip) {
                             Icon(Icons.Default.Add, contentDescription = null)
                             Spacer(modifier = Modifier.width(8.dp))
@@ -91,16 +89,14 @@ fun TripsListScreen(
                     }
                 }
             } else {
-                items(myTrips) { trip ->
-                    TripListItem(trip = trip, userName = userMap[trip.userId], onClick = { onTripClick(trip.id) })
-                }
-            }
-
-            if (otherTrips.isNotEmpty()) {
-                item { Spacer(modifier = Modifier.height(12.dp)) }
-                item { Text("Reviews van anderen", style = MaterialTheme.typography.titleMedium) }
-                items(otherTrips) { trip ->
-                    TripListItem(trip = trip, userName = userMap[trip.userId], onClick = { onTripClick(trip.id) })
+                items(sortedTrips) { trip ->
+                    val ownerName = userMap[trip.userId]
+                        ?: if (trip.userId == Firebase.auth.currentUser?.uid) {
+                            Firebase.auth.currentUser?.displayName
+                                ?: Firebase.auth.currentUser?.email
+                                ?: "Onbekende gebruiker"
+                        } else "Onbekende gebruiker"
+                    TripListItem(trip = trip, userName = ownerName, onClick = { onTripClick(trip.id) })
                 }
             }
         }

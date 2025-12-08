@@ -77,6 +77,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import be.student.cityshare.model.Trip
+import be.student.cityshare.R
 
 @Composable
 fun OsmdroidWorldMapScreen(
@@ -454,6 +455,7 @@ private fun updateTripMarkers(
             position = GeoPoint(trip.lat, trip.lng)
             title = trip.title
             snippet = "trip_marker"
+            icon = mapView.context.getDrawable(R.drawable.ic_location_pin)
             setOnMarkerClickListener { _, _ ->
                 if (trip.id.isNotBlank()) {
                     navController.navigate("trip_detail/${trip.id}")

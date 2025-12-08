@@ -25,6 +25,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import coil.compose.AsyncImage
+import androidx.compose.ui.layout.ContentScale
 import android.location.Geocoder
 import android.location.Location
 import androidx.compose.runtime.Composable
@@ -52,6 +53,7 @@ import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
+import be.student.cityshare.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -117,7 +119,12 @@ fun TripDetailScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            val ownerName = userMap[trip.userId] ?: "Onbekende gebruiker"
+            val ownerName = userMap[trip.userId]
+                ?: if (trip.userId == Firebase.auth.currentUser?.uid) {
+                    Firebase.auth.currentUser?.displayName
+                        ?: Firebase.auth.currentUser?.email
+                        ?: "Onbekende gebruiker"
+                } else "Onbekende gebruiker"
 
             Text(
                 text = "Door: $ownerName",
@@ -167,7 +174,7 @@ fun TripDetailScreen(
                         .fillMaxWidth()
                         .height(220.dp)
                         .clip(RoundedCornerShape(12.dp)),
-                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                    contentScale = ContentScale.Crop
                 )
             }
 
@@ -292,6 +299,7 @@ private fun TripMiniMap(
             map.overlays.clear()
             val marker = Marker(map).apply {
                 position = point
+                icon = map.context.getDrawable(R.drawable.ic_location_pin)
                 setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
             }
             map.overlays.add(marker)
