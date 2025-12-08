@@ -73,7 +73,7 @@ fun HomeScreen(
                 onClick = onNavigateToAddTrip
             )
             HomeCard(
-                title = "Mijn trips",
+                title = "Trips",
                 icon = Icons.AutoMirrored.Filled.List,
                 onClick = onNavigateToPlaces
             )

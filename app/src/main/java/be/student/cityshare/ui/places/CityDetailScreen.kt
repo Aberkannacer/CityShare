@@ -108,7 +108,7 @@ fun CityDetailScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text("Mijn trips", style = MaterialTheme.typography.titleLarge)
+                        Text("Trips", style = MaterialTheme.typography.titleLarge)
                         OutlinedButton(onClick = { onAddTrip(cityName) }) {
                             Text("Trip toevoegen")
                         }
