@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Message
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -29,7 +30,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -38,9 +38,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.unit.dp
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.FirebaseFirestoreException
-import com.google.firebase.firestore.QuerySnapshot
+import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 data class City(
     val id: String = "",
@@ -57,31 +56,12 @@ fun CitiesScreen(
     onLogout: () -> Unit,
     onOpenMap: () -> Unit,
     onOpenChat: () -> Unit,
-    unreadCount: Int
+    unreadCount: Int,
+    viewModel: CitiesViewModel = viewModel()
 ) {
-    var cities by remember { mutableStateOf(listOf<City>()) }
-    var error by remember { mutableStateOf<String?>(null) }
+    val cities by viewModel.cities.collectAsState()
+    val error by viewModel.error.collectAsState()
     var query by remember { mutableStateOf("") }
-
-    DisposableEffect(Unit) {
-        val registration = FirebaseFirestore.getInstance().collection("cities")
-            .addSnapshotListener { snap: QuerySnapshot?, e: FirebaseFirestoreException? ->
-                if (e != null) {
-                    error = e.message
-                    return@addSnapshotListener
-                }
-                val items = snap?.documents?.map { doc ->
-                    City(
-                        id = doc.id,
-                        name = doc.getString("name") ?: "",
-                        country = doc.getString("country") ?: "",
-                        description = doc.getString("description") ?: ""
-                    )
-                }?.sortedBy { it.name.lowercase() } ?: emptyList()
-                cities = items
-            }
-        onDispose { registration.remove() }
-    }
 
     val filtered = cities.filter {
         query.isBlank() || it.name.contains(query, ignoreCase = true) || it.country.contains(query, ignoreCase = true)
@@ -105,6 +85,9 @@ fun CitiesScreen(
                         IconButton(onClick = onOpenChat) {
                             Icon(Icons.Default.Message, contentDescription = "Chat")
                         }
+                    }
+                    IconButton(onClick = { viewModel.refresh() }) {
+                        Icon(Icons.Default.Refresh, contentDescription = "Refresh steden")
                     }
                     TextButton(onClick = onLogout) { Text("Logout") }
                 }
