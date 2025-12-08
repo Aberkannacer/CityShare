@@ -29,8 +29,8 @@ data class City(
 @Composable
 fun CitiesScreen(
     onAddCity: () -> Unit,
-    onBack: () -> Unit,
-    onCityClick: (City) -> Unit
+    onCityClick: (City) -> Unit,
+    onLogout: () -> Unit
 ) {
     var cities by remember { mutableStateOf(listOf<City>()) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -67,9 +67,12 @@ fun CitiesScreen(
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text("Steden") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                actions = {
+                    IconButton(onClick = onLogout) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Uitloggen"
+                        )
                     }
                 }
             )
@@ -87,8 +90,7 @@ fun CitiesScreen(
             }
         },
         floatingActionButtonPosition = FabPosition.Start
-    )
-    { padding ->
+    ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()

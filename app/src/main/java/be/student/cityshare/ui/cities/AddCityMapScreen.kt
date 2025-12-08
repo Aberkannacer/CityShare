@@ -1,7 +1,5 @@
 package be.student.cityshare.ui.cities
 
-import android.Manifest
-import android.content.pm.PackageManager
 import android.location.Location
 import android.widget.Toast
 import androidx.compose.foundation.background
@@ -20,14 +18,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -39,8 +38,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.content.ContextCompat
-import com.google.android.gms.location.LocationServices
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
@@ -70,8 +67,11 @@ fun AddCityMapScreen(
     val context = LocalContext.current
     var selectedPoint by remember { mutableStateOf<GeoPoint?>(null) }
     var selectedLabel by remember { mutableStateOf<String?>(null) }
+    var cityName by remember { mutableStateOf("") }
+    var selectedCountry by remember { mutableStateOf("") }
     var saving by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    var mapLoading by remember { mutableStateOf(true) }
     // Default locatie: Ellermanstraat 33, 2060 Antwerpen
     val userLocation = remember {
         Location("default").apply {
@@ -90,9 +90,12 @@ fun AddCityMapScreen(
         MapView(context).apply {
             setTileSource(TileSourceFactory.MAPNIK)
             setMultiTouchControls(true)
-            controller.setZoom(12.0)
+            controller.setZoom(11.0)
             controller.setCenter(GeoPoint(51.2194, 4.4025)) // Antwerpen als startpositie
             zoomController.setVisibility(CustomZoomButtonsController.Visibility.SHOW_AND_FADEOUT)
+            addOnFirstLayoutListener { _, _, _, _, _ ->
+                mapLoading = false
+            }
         }
     }
 
@@ -124,16 +127,19 @@ fun AddCityMapScreen(
                             null
                         }
 
-                        val cityName = res?.firstOrNull()?.locality
+                        val geoCityName = res?.firstOrNull()?.locality
                             ?: res?.firstOrNull()?.subAdminArea
                             ?: ""
                         val country = res?.firstOrNull()?.countryName ?: ""
 
-                        val label = listOf(cityName, country)
+                        val label = listOf(geoCityName, country)
                             .filter { it.isNotBlank() }
                             .joinToString(", ")
                         launch(Dispatchers.Main) {
+                            val suggestedName = if (geoCityName.isNotBlank()) geoCityName else label
                             selectedLabel = if (label.isNotBlank()) label else "Onbekende locatie"
+                            cityName = suggestedName
+                            selectedCountry = country
                             mapView.controller.setZoom(11.0)
                             mapView.controller.animateTo(p)
                             mapView.overlays.removeAll { it is Marker }
@@ -169,6 +175,17 @@ fun AddCityMapScreen(
             modifier = Modifier.fillMaxSize(),
             factory = { mapView }
         )
+
+        if (mapLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color(0x88000000)),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+        }
 
         IconButton(
             onClick = onBack,
@@ -209,6 +226,14 @@ fun AddCityMapScreen(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                OutlinedTextField(
+                    value = cityName,
+                    onValueChange = { cityName = it },
+                    enabled = selectedPoint != null,
+                    label = { Text("Naam van de stad") },
+                    placeholder = { Text("Voorgestelde naam of eigen keuze") },
+                    modifier = Modifier.fillMaxWidth()
+                )
                 distanceText?.let {
                     Text(
                         text = "Afstand tot jou: $it",
@@ -224,36 +249,21 @@ fun AddCityMapScreen(
                 Button(
                     onClick = {
                         val point = selectedPoint
+                        val nameToSave = cityName.trim()
                         if (saving || point == null) return@Button
+                        if (nameToSave.isBlank()) {
+                            error = "Geef een naam voor de stad."
+                            return@Button
+                        }
 
                         saving = true
                         error = null
 
                         CoroutineScope(Dispatchers.IO).launch {
-                            val geo = Geocoder(context, Locale.getDefault())
-                            val res = try {
-                                geo.getFromLocation(point.latitude, point.longitude, 1)
-                            } catch (_: Exception) {
-                                null
-                            }
-
-                            val name = res?.firstOrNull()?.locality
-                                ?: res?.firstOrNull()?.subAdminArea
-                                ?: ""
-                            val country = res?.firstOrNull()?.countryName ?: ""
-
-                            if (name.isBlank()) {
-                                launch(Dispatchers.Main) {
-                                    saving = false
-                                    error = "Geen stad gevonden op deze locatie."
-                                }
-                                return@launch
-                            }
-
                             val data = hashMapOf(
-                                "name" to name,
-                                "searchName" to name.lowercase(),
-                                "country" to country,
+                                "name" to nameToSave,
+                                "searchName" to nameToSave.lowercase(),
+                                "country" to selectedCountry,
                                 "description" to "",
                                 "latitude" to point.latitude,
                                 "longitude" to point.longitude,

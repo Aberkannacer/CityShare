@@ -43,7 +43,7 @@ fun CityShareApp() {
 
     val hasUnreadMessages by messagingViewModel.hasUnreadMessages.collectAsState()
 
-    val startDestination = if (Firebase.auth.currentUser != null) "home" else "login"
+    val startDestination = if (Firebase.auth.currentUser != null) "cities" else "login"
 
     NavHost(
         navController = navController,
@@ -52,7 +52,7 @@ fun CityShareApp() {
         composable("login") {
             LoginScreen(
                 onLoggedIn = {
-                    navController.navigate("home") {
+                    navController.navigate("cities") {
                         popUpTo("login") { inclusive = true }
                     }
                 },
@@ -200,10 +200,15 @@ fun CityShareApp() {
         composable("cities") {
             CitiesScreen(
                 onAddCity = { navController.navigate("add_city_map") },
-                onBack = { navController.popBackStack() },
                 onCityClick = { city ->
-                    val encodedName = URLEncoder.encode(city.name, "UTF-8")
-                    navController.navigate("city_detail/${city.id}/$encodedName")
+                    val cityNameEncoded = URLEncoder.encode(city.name, "UTF-8")
+                    navController.navigate("city_detail/${city.id}/$cityNameEncoded")
+                },
+                onLogout = {
+                    Firebase.auth.signOut()
+                    navController.navigate("login") {
+                        popUpTo("cities") { inclusive = true }
+                    }
                 }
             )
         }
@@ -225,6 +230,14 @@ fun CityShareApp() {
                 onBack = { navController.popBackStack() },
                 onPlaceClick = { place ->
                     navController.navigate("place_detail/${place.id}")
+                },
+                onTripClick = { tripId ->
+                    navController.navigate("trip_detail/$tripId")
+                },
+                onAddTrip = { selectedCityName ->
+                    val cityEncoded = URLEncoder.encode(selectedCityName, "UTF-8")
+                    val addressEncoded = URLEncoder.encode("", "UTF-8")
+                    navController.navigate("add_trip_prefill/$cityEncoded/$addressEncoded")
                 }
             )
         }
@@ -240,7 +253,8 @@ fun CityShareApp() {
             TripsListScreen(
                 tripsViewModel = tripsViewModel,
                 onBack = { navController.popBackStack() },
-                onTripClick = { tripId -> navController.navigate("trip_detail/$tripId") }
+                onTripClick = { tripId -> navController.navigate("trip_detail/$tripId") },
+                onAddTrip = { navController.navigate("add_trip") }
             )
         }
 

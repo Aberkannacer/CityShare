@@ -24,6 +24,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
+import coil.compose.AsyncImage
 import android.location.Geocoder
 import android.location.Location
 import androidx.compose.runtime.Composable
@@ -37,9 +38,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.runtime.DisposableEffect
 import be.student.cityshare.model.TripReview
+import com.google.firebase.auth.ktx.auth
+import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.osmdroid.config.Configuration
+import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.util.GeoPoint
+import org.osmdroid.views.MapView
+import org.osmdroid.views.overlay.Marker
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,16 +66,25 @@ fun TripDetailScreen(
     val trip = trips.find { it.id == tripId }
     val reviewsByTrip by tripsViewModel.reviews.collectAsState()
     val reviews = reviewsByTrip[tripId].orEmpty()
+    val userId = Firebase.auth.currentUser?.uid
 
     var rating by remember { mutableStateOf(0) }
     var comment by remember { mutableStateOf("") }
     var distanceKm by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(trip) {
+    LaunchedEffect(trip, reviews) {
         trip?.let {
-            rating = it.rating
-            comment = it.comment
             distanceKm = computeDistance(context, it)
+        }
+        if (userId != null) {
+            val myReview = reviews.firstOrNull { it.userId == userId }
+            if (myReview != null) {
+                rating = myReview.rating
+                comment = myReview.comment
+            } else {
+                rating = 0
+                comment = ""
+            }
         }
     }
 
@@ -97,26 +118,71 @@ fun TripDetailScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             val ownerName = userMap[trip.userId] ?: "Onbekende gebruiker"
-            Text(text = "Door: $ownerName", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(text = trip.category, style = MaterialTheme.typography.titleMedium)
+
+            Text(
+                text = "Door: $ownerName",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            if (trip.latitude != 0.0 || trip.longitude != 0.0) {
+                TripMiniMap(
+                    latitude = trip.latitude,
+                    longitude = trip.longitude
+                )
+            }
+
+            Text(
+                text = trip.category,
+                style = MaterialTheme.typography.titleMedium
+            )
 
             if (trip.address.isNotBlank()) {
-                Text(text = trip.address, style = MaterialTheme.typography.bodyMedium)
-            }
-            distanceKm?.let { km ->
-                Text(text = "Afstand vanaf Ellermanstraat 33: $km km", style = MaterialTheme.typography.bodyMedium)
-            }
-            if (trip.notes.isNotBlank()) {
-                Text(text = trip.notes, style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    text = trip.address,
+                    style = MaterialTheme.typography.bodyMedium
+                )
             }
 
-            Text(text = "Geef een rating", style = MaterialTheme.typography.titleSmall)
+            distanceKm?.let { km ->
+                Text(
+                    text = "Afstand vanaf Ellermanstraat 33: $km km",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+
+            if (trip.notes.isNotBlank()) {
+                Text(
+                    text = trip.notes,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+
+            if (!trip.imageBase64.isNullOrBlank()) {
+                Text("Foto", style = MaterialTheme.typography.titleSmall)
+                AsyncImage(
+                    model = android.util.Base64.decode(trip.imageBase64, android.util.Base64.DEFAULT),
+                    contentDescription = "Trip foto",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(220.dp)
+                        .clip(RoundedCornerShape(12.dp)),
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                )
+            }
+
+            Text(
+                text = "Geef een rating",
+                style = MaterialTheme.typography.titleSmall
+            )
+
             Row {
                 (1..5).forEach { i ->
                     Icon(
                         imageVector = if (i <= rating) Icons.Filled.Star else Icons.Filled.StarBorder,
                         contentDescription = "Ster $i",
-                        tint = if (i <= rating) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        tint = if (i <= rating) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier
                             .padding(end = 4.dp)
                             .clickable { rating = i }
@@ -144,7 +210,9 @@ fun TripDetailScreen(
             }
 
             Spacer(modifier = Modifier.height(12.dp))
+
             Text("Reviews", style = MaterialTheme.typography.titleMedium)
+
             if (reviews.isEmpty()) {
                 Text("Nog geen reviews.")
             } else {
@@ -189,6 +257,47 @@ private fun ReviewItem(review: TripReview, fallbackName: String) {
             Text(text = review.comment, style = MaterialTheme.typography.bodyMedium)
         }
     }
+}
+@Composable
+private fun TripMiniMap(
+    latitude: Double,
+    longitude: Double,
+    modifier: Modifier = Modifier
+        .fillMaxWidth()
+        .height(200.dp)
+        .clip(RoundedCornerShape(16.dp))
+) {
+    val context = LocalContext.current
+
+    DisposableEffect(Unit) {
+        Configuration.getInstance().userAgentValue = context.packageName
+        onDispose { }
+    }
+
+    val mapView = remember {
+        MapView(context).apply {
+            setTileSource(TileSourceFactory.MAPNIK)
+            setMultiTouchControls(false)
+            controller.setZoom(13.0)
+        }
+    }
+
+    AndroidView(
+        modifier = modifier,
+        factory = { mapView },
+        update = { map ->
+            val point = GeoPoint(latitude, longitude)
+            map.controller.setCenter(point)
+
+            map.overlays.clear()
+            val marker = Marker(map).apply {
+                position = point
+                setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+            }
+            map.overlays.add(marker)
+            map.invalidate()
+        }
+    )
 }
 
 private suspend fun computeDistance(context: android.content.Context, trip: be.student.cityshare.model.Trip): String? {

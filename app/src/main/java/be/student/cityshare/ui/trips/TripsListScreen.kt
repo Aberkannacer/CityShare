@@ -8,10 +8,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.Card
@@ -19,7 +21,9 @@ import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -37,7 +41,8 @@ import com.google.firebase.ktx.Firebase
 fun TripsListScreen(
     tripsViewModel: TripsViewModel,
     onBack: () -> Unit,
-    onTripClick: (String) -> Unit
+    onTripClick: (String) -> Unit,
+    onAddTrip: () -> Unit
 ) {
     val trips by tripsViewModel.trips.collectAsState()
     val userMap by tripsViewModel.userMap.collectAsState()
@@ -53,8 +58,18 @@ fun TripsListScreen(
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Terug")
                     }
+                },
+                actions = {
+                    IconButton(onClick = onAddTrip) {
+                        Icon(Icons.Default.Add, contentDescription = "Trip toevoegen")
+                    }
                 }
             )
+        },
+        floatingActionButton = {
+            FloatingActionButton(onClick = onAddTrip) {
+                Icon(Icons.Default.Add, contentDescription = "Trip toevoegen")
+            }
         }
     ) { padding ->
         LazyColumn(
@@ -63,7 +78,18 @@ fun TripsListScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             if (myTrips.isEmpty()) {
-                item { Text("Nog geen trips opgeslagen.") }
+                item {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text("Nog geen trips opgeslagen.")
+                        OutlinedButton(onClick = onAddTrip) {
+                            Icon(Icons.Default.Add, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Nieuwe trip toevoegen")
+                        }
+                    }
+                }
             } else {
                 items(myTrips) { trip ->
                     TripListItem(trip = trip, userName = userMap[trip.userId], onClick = { onTripClick(trip.id) })

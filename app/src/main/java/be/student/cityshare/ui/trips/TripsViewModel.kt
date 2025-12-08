@@ -130,7 +130,18 @@ class TripsViewModel : ViewModel() {
             "createdAt" to FieldValue.serverTimestamp()
         )
 
-        db.collection("tripReviews").add(data)
+        db.collection("tripReviews")
+            .whereEqualTo("tripId", tripId)
+            .whereEqualTo("userId", userId)
+            .get()
+            .addOnSuccessListener { existing ->
+                if (!existing.isEmpty) {
+                    val docId = existing.documents.first().id
+                    db.collection("tripReviews").document(docId).set(data)
+                } else {
+                    db.collection("tripReviews").add(data)
+                }
+            }
     }
 
     fun updateTripReview(tripId: String, rating: Int, comment: String) {
@@ -196,6 +207,8 @@ class TripsViewModel : ViewModel() {
         rating: Int,
         comment: String,
         cityNameOverride: String? = null,
+        latitude: Double? = null,
+        longitude: Double? = null,
         onSuccess: () -> Unit,
         onError: (String) -> Unit
     ) {
@@ -229,16 +242,22 @@ class TripsViewModel : ViewModel() {
 
                 val (geoLat, geoLng, geoCity, geoCountry) = geocodeAddress(context, address, city?.name ?: cityNameOverride)
 
+                val cityNameCandidate = city?.name ?: cityNameOverride ?: geoCity ?: ""
                 val finalCity = city
-                    ?: createCityIfMissing(cityNameOverride!!, userId, geoCountry ?: "")
+                    ?: if (cityNameCandidate.isNotBlank()) {
+                        createCityIfMissing(cityNameCandidate, userId, geoCountry ?: "")
+                    } else null
+
+                val finalLat = latitude ?: geoLat
+                val finalLng = longitude ?: geoLng
 
                 val trip = Trip(
                     id = id,
                     userId = userId,
                     cityId = finalCity?.id ?: "",
                     cityName = finalCity?.name ?: geoCity ?: cityNameOverride ?: "",
-                    latitude = geoLat ?: 0.0,
-                    longitude = geoLng ?: 0.0,
+                    latitude = finalLat ?: 0.0,
+                    longitude = finalLng ?: 0.0,
                     category = category,
                     address = address.trim(),
                     notes = notes.trim(),
@@ -265,6 +284,10 @@ class TripsViewModel : ViewModel() {
                     .document(id)
                     .set(data)
                     .await()
+
+                if (rating > 0 || comment.isNotBlank()) {
+                    addReview(id, rating, comment)
+                }
 
                 onSuccess()
             } catch (e: Exception) {
