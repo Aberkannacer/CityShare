@@ -114,6 +114,13 @@ fun OsmdroidWorldMapScreen(
         matchesCategory && matchesCity
     }
 
+    val availableCategories = remember(trips) {
+        trips.map { it.category }
+            .filter { it.isNotBlank() }
+            .distinct()
+            .sorted()
+    }
+
     val tripPins by produceState(initialValue = emptyList<TripPin>(), key1 = filteredTrips, key2 = context) {
         value = withContext(Dispatchers.IO) {
             val geo = Geocoder(context, java.util.Locale.getDefault())
@@ -340,9 +347,8 @@ fun OsmdroidWorldMapScreen(
         }
 
         if (showFilterDialog) {
-            val categories = remember(filteredTrips) {
-                listOf("Alle categorieën") +
-                        filteredTrips.map { it.category }.distinct().sorted()
+            val categories = remember(availableCategories) {
+                listOf("Alle categorieen") + availableCategories
             }
 
             AlertDialog(
@@ -351,7 +357,7 @@ fun OsmdroidWorldMapScreen(
                 text = {
                     LazyColumn {
                         items(categories) { category ->
-                            val isSelected = if (category == "Alle categorieën") {
+                            val isSelected = if (category == "Alle categorieen") {
                                 selectedCategories.isEmpty()
                             } else {
                                 selectedCategories.contains(category)
@@ -361,7 +367,7 @@ fun OsmdroidWorldMapScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable {
-                                        if (category == "Alle categorieën") {
+                                        if (category == "Alle categorieen") {
                                             // Leeg setje = alles tonen
                                             selectedCategories = emptySet()
                                         } else {
@@ -379,7 +385,7 @@ fun OsmdroidWorldMapScreen(
                                 Checkbox(
                                     checked = isSelected,
                                     onCheckedChange = {
-                                        if (category == "Alle categorieën") {
+                                        if (category == "Alle categorieen") {
                                             selectedCategories = emptySet()
                                         } else {
                                             selectedCategories =
